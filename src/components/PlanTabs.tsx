@@ -38,6 +38,7 @@ export enum tabs {
   media = 1,
   assignment = 2,
   transcription = 3,
+  report = 4,
 }
 
 interface IProps {
@@ -192,6 +193,19 @@ const ScrollableTabsButtonAuto = (props: IProps) => {
               />
             }
           />
+          <Tab
+            id="reports"
+            label={
+              <Title
+                text="Report"
+                status={statusMessage(
+                  "Report",
+                  planSectionIds.length,
+                  planSectionIds.length,
+                )}
+              />
+            }
+          />
         </Tabs>
       </AppBar>
       <Box sx={{ pt: `${TabHeight}px` }}>
@@ -199,8 +213,10 @@ const ScrollableTabsButtonAuto = (props: IProps) => {
           <ScriptureTable {...props} colNames={colNames} />
         )}
         {tab === tabs.media && <AudioTab />}
-        {showAssign && tab === tabs.assignment && <AssignmentTable />}
-        {(tab === tabs.transcription ||
+        {showAssign && tab === tabs.assignment && (
+          <AssignmentTable />
+        )}
+        {(showAssign && tab === tabs.transcription ||
           (!showAssign && tab === tabs.assignment)) && (
           <TranscriptionTab
             {...props}
@@ -208,6 +224,13 @@ const ScrollableTabsButtonAuto = (props: IProps) => {
             sectionArr={sectionArr}
             planColumn={true}
           />
+        )}
+        {(showAssign && tab === tabs.report ||
+          (!showAssign && tab === tabs.transcription)) && (
+          <h1>
+            Report test
+            {/* {t.report.replace('{0}', organizedBy)} */}
+          </h1>
         )}
       </Box>
     </Box>
