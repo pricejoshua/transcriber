@@ -1527,6 +1527,21 @@ export interface IReportsTabStrings extends Localize.LocalizedStringsMethods {
     "action": string;
     "all": string;
     "allPassages": string;
+    "availableOnClipboard": string;
+    "copyTip": string;
+    "copyTranscriptions": string;
+    "download": string;
+    "elan": string;
+    "electronBackup": string;
+    "error": string;
+    "export": string;
+    "exportProject": string;
+    "creatingDownloadFile": string;
+    "downloading": string;
+    "generateReport": string;
+    "noData": string;
+    "offlineData": string;
+    "writingDownloadFile": string;
 }
 
 export interface ITreeChartStrings extends Localize.LocalizedStringsMethods {
@@ -1885,6 +1900,7 @@ export interface ILocalizedStrings {
 	transcribeReject: ITranscribeRejectStrings;
 	transcriptionShow: ITranscriptionShowStrings;
 	transcriptionTab: ITranscriptionTabStrings;
+  reportsTab: IReportsTabStrings;
 	treeChart: ITreeChartStrings;
 	uploadProgress: IUploadProgressStrings;
 	userListMode: IUserListModeStrings;

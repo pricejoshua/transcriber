@@ -228,6 +228,9 @@ export const transcriptionShowSelector = (state: IState) =>
 export const transcriptionTabSelector = (state: IState) =>
   localStrings(state as IState, { layout: 'transcriptionTab' });
 
+export const reportsTabSelector = (state: IState) =>
+  localStrings(state as IState, { layout: 'reportsTab' });
+
 export const userTableSelector = (state: IState) =>
   localStrings(state as IState, { layout: 'usertable' });
 

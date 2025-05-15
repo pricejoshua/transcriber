@@ -32,6 +32,7 @@ import { TabHeight } from '../control';
 import { useOrbitData } from '../hoc/useOrbitData';
 import { shallowEqual, useSelector } from 'react-redux';
 import { planTabsSelector } from '../selector';
+import { SimpleReportsTab } from './SimpleReportsTab';
 
 export enum tabs {
   sectionPassage = 0,
@@ -228,8 +229,14 @@ const ScrollableTabsButtonAuto = (props: IProps) => {
         {(showAssign && tab === tabs.report ||
           (!showAssign && tab === tabs.transcription)) && (
           <h1>
-            Report test
-            {/* {t.report.replace('{0}', organizedBy)} */}
+            <SimpleReportsTab
+              projectPlans={plans.filter((p) => p.id === plan)}
+              planColumn={true}
+              floatTop={false}
+              step={undefined}
+              orgSteps={undefined}
+              sectionArr={sectionArr}
+            />
           </h1>
         )}
       </Box>
