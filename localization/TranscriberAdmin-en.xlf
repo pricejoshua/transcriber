@@ -7552,6 +7552,12 @@
             <target/>
          </segment>
       </unit>
+      <unit id="reportsTab.generateReport">
+         <segment>
+            <source>Generate report</source>
+            <target/>
+         </segment>
+      </unit>
       <unit id="transcriptionTab.electronBackup">
          <segment>
             <source>Back up All Audio Projects</source>

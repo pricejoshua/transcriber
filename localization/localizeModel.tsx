@@ -1524,10 +1524,8 @@ export interface ITranscriptionTabStrings extends Localize.LocalizedStringsMetho
 };
 
 export interface IReportsTabStrings extends Localize.LocalizedStringsMethods {
-    "action": string;
-    "all": string;
-    "allPassages": string;
-}
+    "generateReport": string;
+};
 
 export interface ITreeChartStrings extends Localize.LocalizedStringsMethods {
     "contributions": string;
@@ -1885,6 +1883,7 @@ export interface ILocalizedStrings {
 	transcribeReject: ITranscribeRejectStrings;
 	transcriptionShow: ITranscriptionShowStrings;
 	transcriptionTab: ITranscriptionTabStrings;
+	reportsTab: IReportsTabStrings;
 	treeChart: ITreeChartStrings;
 	uploadProgress: IUploadProgressStrings;
 	userListMode: IUserListModeStrings;
