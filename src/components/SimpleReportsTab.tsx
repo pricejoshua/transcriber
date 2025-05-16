@@ -11,7 +11,7 @@ import {
   PassageD,
   Section,
 } from '../model';
-import { Box, LinearProgress } from '@mui/material';
+import { Box, LinearProgress, Tabs, Tab, Typography } from '@mui/material';
 import {
   GrowingSpacer,
   PaddedBox,
@@ -30,6 +30,9 @@ import {
 } from '../selector';
 import { related, sectionCompare, passageCompare, passageRefText, useTranscription } from '../crud';
 import { getSection } from './AudioTab';
+import { mapNamedFullResponses } from '@orbit/data';
+import PublishReadinessReport from './PublishReadinessReport';
+import { useProjectPermissions } from '../utils/useProjectPermissions';
 
 interface IProps {
   projectPlans: Plan[];
@@ -48,105 +51,65 @@ export function SimpleReportsTab(props: IProps) {
   const t: IReportsTabStrings = useSelector(reportsTabSelector);
   const ts: ISharedStrings = useSelector(sharedSelector);
   const { showMessage } = useSnackBar();
+  const { canPublish } = useProjectPermissions();
 
   // Basic state
   const [busy, setBusy] = useGlobal('importexportBusy');
   const [filter, setFilter] = useState(false);
+  const [reportTab, setReportTab] = useState(0);
 
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
 
-  const handleAction = () => {
-    showMessage('Action triggered');
+  const handleReportTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setReportTab(newValue);
   };
-
-  const getCopy = (
-    projectPlans: Plan[],
-    passages: Array<Passage>,
-    sections: Array<Section>,
-    bookData: BookName[]
-  ) => {
-    const copyData: string[] = [];
-    projectPlans.forEach((planRec) => {
-      let planName = planColumn ? planRec?.attributes?.name : '';
-      sections
-        .filter((s) => related(s, 'plan') === planRec.id && s.attributes)
-        .sort(sectionCompare)
-        .forEach((section) => {
-          const sectionpassages = passages
-            .filter((ps) => related(ps, 'section') === section.id)
-            .sort(passageCompare) as PassageD[];
-          let sectionHead =
-            '-----\n' + getSection([section], sectionMap) + '\n';
-          sectionpassages.forEach((passage) => {
-            // const state = passage?.attributes?.state ||'';
-            const ref = passageRefText(passage, bookData);
-            const transcription = getTranscription(passage.id, exportId);
-            if (transcription !== '') {
-              if (planName && planName !== '') {
-                copyData.push(`*****\n${planName}\n`);
-                planName = '';
-              }
-              if (sectionHead !== '') {
-                copyData.push(sectionHead);
-                sectionHead = '';
-              }
-              if (ref && ref !== '') copyData.push(ref);
-              copyData.push(transcription + '\n');
-            }
-          });
-        });
-    });
-
-    return copyData;
-  };
-  // You can add more state and handlers as needed
 
   return (
-    <Box id="SimpleReportsTab" sx={{ display: 'flex' }}>
-      <div>
-        <TabAppBar
-          position="fixed"
-          highBar={planColumn || floatTop}
-          color="default"
+    <Box id="SimpleReportsTab" sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <TabAppBar
+        position="fixed"
+        highBar={planColumn || floatTop}
+        color="default"
+      >
+        <TabActions>
+          <GrowingSpacer />
+          <FilterButton filter={filter} onFilter={handleFilter} />
+        </TabActions>
+      </TabAppBar>
+      <PaddedBox>
+        <Tabs
+          value={reportTab}
+          onChange={handleReportTabChange}
+          aria-label="report-tabs"
+          sx={{ mb: 2 }}
         >
-          <TabActions>
-            <AltButton
-              id="action1"
-              key="action1"
-              aria-label="Action 1"
-              onClick={handleAction}
-              title="Action 1"
-            >
-              Action 1
-            </AltButton>
-            <AltButton
-              id="action2"
-              key="action2"
-              aria-label="Action 2"
-              onClick={handleAction}
-              title="Action 2"
-            >
-              Action 2
-            </AltButton>
-            <GrowingSpacer />
-            <FilterButton filter={filter} onFilter={handleFilter} />
-          </TabActions>
-        </TabAppBar>
-        <PaddedBox>
-          {/* Your main content goes here */}
-          <div>Placeholder for main content</div>
-          <LinearProgress
-            variant="determinate"
-            value={64}
-            sx={{
-              width: '100%',
-              height: 20,
-              backgroundColor: 'primary.light',
-            }}
-          />
-        </PaddedBox>
-      </div>
+          <Tab label={t.generalReport} id="report-tab-0" />
+          {canPublish && <Tab label={t.publishReadiness} id="report-tab-1" />}
+        </Tabs>
+
+        {reportTab === 0 && (
+          <Box>
+            {/* General report content will go here */}
+            <Typography variant="body1">
+              {t.generalReportDescription}
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={64}
+              sx={{
+                width: '100%',
+                height: 20,
+                backgroundColor: 'primary.light',
+              }}
+            />
+          </Box>
+        )}
+
+        {reportTab === 1 && canPublish && (
+          <PublishReadinessReport projectPlans={projectPlans} />
+        )}
+      </PaddedBox>
     </Box>
   );
 }
