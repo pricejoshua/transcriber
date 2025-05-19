@@ -772,9 +772,14 @@ export interface IMediaTitleStrings extends Localize.LocalizedStringsMethods {
     "cancel": string;
     "playPause": string;
     "record": string;
+    "recordOrUpload": string;
     "recording": string;
     "save": string;
     "saving": string;
+    "provideAudio": string;
+    "upload": string;
+    "uploadFailed": string;
+    "uploadFailStatus": string;
 };
 
 export interface IMediaUploadStrings extends Localize.LocalizedStringsMethods {
@@ -939,9 +944,12 @@ export interface IPassageTypeStrings extends Localize.LocalizedStringsMethods {
 };
 
 export interface IPeerStrings extends Localize.LocalizedStringsMethods {
+    "assignment": string;
     "peerDescription": string;
     "editPeerGroup": string;
+    "inSchemeUse": string;
     "inUse": string;
+    "permission": string;
     "permissions": string;
     "noSpecialPermission": string;
     "member": string;

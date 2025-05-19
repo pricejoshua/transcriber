@@ -3976,6 +3976,12 @@
             <target/>
          </segment>
       </unit>
+      <unit id="mediaTitle.recordOrUpload">
+         <segment>
+            <source>Record or Upload</source>
+            <target/>
+         </segment>
+      </unit>
       <unit id="mediaTitle.recording">
          <segment>
             <source>Recording...</source>
@@ -3991,6 +3997,30 @@
       <unit id="mediaTitle.saving">
          <segment>
             <source>Saving...</source>
+            <target/>
+         </segment>
+      </unit>
+      <unit id="mediaTitle.provideAudio">
+         <segment>
+            <source>Provide audio for '{0}'</source>
+            <target/>
+         </segment>
+      </unit>
+      <unit id="mediaTitle.upload">
+         <segment>
+            <source>Upload</source>
+            <target/>
+         </segment>
+      </unit>
+      <unit id="mediaTitle.uploadFailed">
+         <segment>
+            <source>Upload Failed!</source>
+            <target/>
+         </segment>
+      </unit>
+      <unit id="mediaTitle.uploadFailStatus">
+         <segment>
+            <source>{0} Upload Failed!</source>
             <target/>
          </segment>
       </unit>
@@ -4798,6 +4828,12 @@
             <target/>
          </segment>
       </unit>
+      <unit id="peer.assignment">
+         <segment>
+            <source>assignment</source>
+            <target/>
+         </segment>
+      </unit>
       <unit id="peer.peerDescription">
          <segment>
             <source>Peer Groups allow you to assign tasks to a group rather than an individual.</source>
@@ -4810,9 +4846,21 @@
             <target/>
          </segment>
       </unit>
+      <unit id="peer.inSchemeUse">
+         <segment>
+            <source>This group is referenced in {0} {2} steps in {1} {2} schemes</source>
+            <target/>
+         </segment>
+      </unit>
       <unit id="peer.inUse">
          <segment>
             <source>Name already in use</source>
+            <target/>
+         </segment>
+      </unit>
+      <unit id="peer.permission">
+         <segment>
+            <source>permission</source>
             <target/>
          </segment>
       </unit>
