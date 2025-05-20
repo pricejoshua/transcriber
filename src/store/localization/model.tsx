@@ -1523,76 +1523,6 @@ export interface ITranscriptionTabStrings extends Localize.LocalizedStringsMetho
     "updated": string;
 };
 
-export interface IReportsTabStrings extends Localize.LocalizedStringsMethods {
-    "action": string;
-    "all": string;
-    "allPassages": string;
-    "alternativeName": string;
-    "availableOnClipboard": string;
-    "bibleId": string;
-    "bibleName": string;
-    "bibleMetadata": string;
-    "bibleNameRecording": string;
-    "chapters": string;
-    "chapterNumber": string;
-    "content": string;
-    "copyright": string;
-    "copyTip": string;
-    "copyTranscriptions": string;
-    "download": string;
-    "elan": string;
-    "electronBackup": string;
-    "error": string;
-    "export": string;
-    "exportProject": string;
-    "creatingDownloadFile": string;
-    "downloading": string;
-    "generateReport": string;
-    "generalReport": string;
-    "generalReportDescription": string;
-    "graphic": string;
-    "item": string;
-    "languageIso": string;
-    "languageName": string;
-    "languageRecording": string;
-    "loadingReadinessData": string;
-    "movements": string;
-    "name": string;
-    "noChaptersAvailable": string;
-    "noData": string;
-    "noMovementsAvailable": string;
-    "noNotesAvailable": string;
-    "noPassagesAvailable": string;
-    "noReadinessData": string;
-    "notes": string;
-    "notReady": string;
-    "notRecorded": string;
-    "notUploaded": string;
-    "noSectionsAvailable": string;
-    "offlineData": string;
-    "passage": string;
-    "passages": string;
-    "projectMetadata": string;
-    "projectName": string;
-    "published": string;
-    "publishReadiness": string;
-    "publishStatus": string;
-    "readyToPublish": string;
-    "recorded": string;
-    "reference": string;
-    "sections": string;
-    "sequence": string;
-    "showMissingItemsOnly": string;
-    "showReadyToPublish": string;
-    "status": string;
-    "title": string;
-    "titleRecorded": string;
-    "uploaded": string;
-    "value": string;
-    "writingDownloadFile": string;
-}
-}
-
 export interface ITreeChartStrings extends Localize.LocalizedStringsMethods {
     "contributions": string;
     "noData": string;
@@ -1949,7 +1879,6 @@ export interface ILocalizedStrings {
 	transcribeReject: ITranscribeRejectStrings;
 	transcriptionShow: ITranscriptionShowStrings;
 	transcriptionTab: ITranscriptionTabStrings;
-  reportsTab: IReportsTabStrings;
 	treeChart: ITreeChartStrings;
 	uploadProgress: IUploadProgressStrings;
 	userListMode: IUserListModeStrings;

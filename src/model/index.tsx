@@ -16,7 +16,6 @@ export * from './passage';
 export * from './sectionPassage';
 export * from './passageStateChange';
 export * from './projectintegration';
-export * from './publishReadiness';
 export * from './user';
 export * from './role';
 export * from './activityState';

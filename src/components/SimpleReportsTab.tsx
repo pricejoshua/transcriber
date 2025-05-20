@@ -3,7 +3,6 @@ import { useGlobal } from '../context/GlobalContext';
 import {
   IState,
   Plan,
-  IReportsTabStrings,
   ISharedStrings,
   OrgWorkflowStepD,
   Passage,
@@ -31,7 +30,6 @@ import {
 import { related, sectionCompare, passageCompare, passageRefText, useTranscription } from '../crud';
 import { getSection } from './AudioTab';
 import { mapNamedFullResponses } from '@orbit/data';
-import PublishReadinessReport from './PublishReadinessReport';
 import { useProjectPermissions } from '../utils/useProjectPermissions';
 
 interface IProps {
@@ -48,7 +46,7 @@ export function SimpleReportsTab(props: IProps) {
   const sectionMap = new Map<number, string>(sectionArr);
   const getTranscription = useTranscription(true);
 
-  const t: IReportsTabStrings = useSelector(reportsTabSelector);
+  // const t: IReportsTabStrings = useSelector(reportsTabSelector);
   const ts: ISharedStrings = useSelector(sharedSelector);
   const { showMessage } = useSnackBar();
   const { canPublish } = useProjectPermissions();
@@ -84,15 +82,15 @@ export function SimpleReportsTab(props: IProps) {
           aria-label="report-tabs"
           sx={{ mb: 2 }}
         >
-          <Tab label={t.generalReport} id="report-tab-0" />
-          {canPublish && <Tab label={t.publishReadiness} id="report-tab-1" />}
+          <Tab label={"General Report"} id="report-tab-0" />
+          {canPublish && <Tab label={"Publish Readiness"} id="report-tab-1" />}
         </Tabs>
 
         {reportTab === 0 && (
           <Box>
             {/* General report content will go here */}
             <Typography variant="body1">
-              {t.generalReportDescription}
+              {"General report description"}
             </Typography>
             <LinearProgress
               variant="determinate"
@@ -104,10 +102,6 @@ export function SimpleReportsTab(props: IProps) {
               }}
             />
           </Box>
-        )}
-
-        {reportTab === 1 && canPublish && (
-          <PublishReadinessReport projectPlans={projectPlans} />
         )}
       </PaddedBox>
     </Box>

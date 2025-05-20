@@ -1608,28 +1608,6 @@ const initialState = {
 			"updated": "Updated",
 		}
 	}),
-  "reportsTab": new LocalizedStrings({
-    "en": {
-      "action": "Action",
-      "all": "All",
-      "allPassages": "All Passages",
-      "availableOnClipboard": "Available on Clipboard",
-      "copyTip": "Copy transcriptions to clipboard",
-      "copyTranscriptions": "Copy Transcriptions",
-      "download": "Download",
-      "elan": "ELAN",
-      "electronBackup": "Backup",
-      "error": "Error",
-      "export": "Export",
-      "exportProject": "Export Project",
-      "creatingDownloadFile": "Creating download file",
-      "downloading": "Downloading {0}",
-      "generateReport": "Generate Report",
-      "noData": "No {0} transcriptions found",
-      "offlineData": "Some data is only available offline",
-      "writingDownloadFile": "Writing download file"
-    }
-  }),
 	"treeChart": new LocalizedStrings({
 		"en": {
 			"contributions": "Contributions toward",
@@ -2004,7 +1982,6 @@ const localizationReducer = function (state = initialState, action: any): ILocal
 				"transcribeReject" : new LocalizedStrings(action.payload.data.transcribeReject),
 				"transcriptionShow" : new LocalizedStrings(action.payload.data.transcriptionShow),
 				"transcriptionTab" : new LocalizedStrings(action.payload.data.transcriptionTab),
-        "reportsTab" : new LocalizedStrings(action.payload.data.reportsTab),
 				"treeChart" : new LocalizedStrings(action.payload.data.treeChart),
 				"uploadProgress" : new LocalizedStrings(action.payload.data.uploadProgress),
 				"userListMode" : new LocalizedStrings(action.payload.data.userListMode),
