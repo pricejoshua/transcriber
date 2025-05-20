@@ -325,10 +325,11 @@ export const DiscussionCard = (props: IProps) => {
       commentMediaId.current = '';
     }
   };
-  const { uploadMedia, fileName } = useRecordComment({
+
+  const { uploadMedia, fileName, uploadSuccess } = useRecordComment({
     mediafileId: mediafileId,
     commentNumber: -1,
-    afterUploadcb: saveMyComment,
+    afterUploadCb: saveMyComment,
   });
 
   const [changeAssignment, setChangeAssignment] = useState<
@@ -723,7 +724,7 @@ export const DiscussionCard = (props: IProps) => {
             discussion,
             'creatorUser',
             'user',
-            assignedUser?.id ?? '',
+            assignedUser?.id ?? user ?? '',
             user
           )
         );
@@ -953,6 +954,7 @@ export const DiscussionCard = (props: IProps) => {
                     uploadMethod={uploadMedia}
                     onTextChange={handleTextChange}
                     cancelOnlyIfChanged={true}
+                    uploadSuccess={uploadSuccess}
                   />
                 )}
                 <Box sx={{ display: 'flex', flexDirection: 'row' }}>
@@ -1057,7 +1059,7 @@ export const DiscussionCard = (props: IProps) => {
                     id={`menu-${discussion.id}`}
                     action={handleDiscussionAction}
                     resolved={discussion.attributes.resolved || false}
-                    canSet={Boolean(currentSegment)}
+                    canSet={Boolean(currentSegment) && canResolve}
                     canResolve={canResolve}
                     canEdit={canResolve || !isPersonal} //can only assign
                   />
