@@ -32,24 +32,20 @@ import {
 } from '../control';
 import { useSnackBar } from '../hoc/SnackBar';
 import { useSelector } from 'react-redux';
-import {
-  reportsTabSelector,
-  sharedSelector,
-  transcriptionTabSelector,
-} from '../selector';
-import { related, sectionCompare, passageCompare, passageRefText, useTranscription } from '../crud';
-import { getSection } from './AudioTab';
-import { mapNamedFullResponses } from '@orbit/data';
+import { sharedSelector } from '../selector';
 import { useProjectPermissions } from '../utils/useProjectPermissions';
 import { useOrbitData } from '../hoc/useOrbitData';
 import { OrganizationSchemeStepD } from '../model/organizationSchemeStep';
 
 interface IProps {
   projectPlans: Plan[];
+  planColumn?: boolean;
+  floatTop?: boolean;
+  step?: string;
+  orgSteps?: OrgWorkflowStepD[];
 }
 
 export function SimpleReportsTab(props: IProps) {
-
   // ORBIT DATA is part of the key to this
   const passages = useOrbitData<PassageD[]>('passage');
   const sections = useOrbitData<SectionD[]>('section');
@@ -65,10 +61,33 @@ export function SimpleReportsTab(props: IProps) {
   const organizationSchemeSteps = useOrbitData<OrganizationSchemeStepD[]>(
     'organizationschemestep'
   );
-  const getTranscription = useTranscription(true);
 
   const { projectPlans } = props;
-  console.log('projectPlans', projectPlans);
+  // console.log('projectPlans', projectPlans);
+  // console.log('passages', passages);
+  // console.log('sections', sections);
+  // console.log('plans', plans);
+  // console.log('projects', projects);
+  // console.log('graphics', graphics);
+  // console.log('workflowSteps', workflowSteps);
+
+  const planId = projectPlans[0]?.id;
+  const plan = projectPlans[0];
+  const planName = projectPlans[0]?.attributes?.name;
+
+  const planSections = sections.filter((section) => {
+    const planData = section.relationships?.plan.data;
+    if (Array.isArray(planData)) {
+      return planData.some(item => item.id === planId);
+    }
+    return planData?.id === planId;
+  });
+
+
+  console.log('planId', planId);
+  console.log('plan', plan);
+
+  console.log('plan.relationships', plan.relationships);
 
   // const t: IReportsTabStrings = useSelector(reportsTabSelector);
   const ts: ISharedStrings = useSelector(sharedSelector);
@@ -90,10 +109,37 @@ export function SimpleReportsTab(props: IProps) {
     setReportTab(newValue);
   };
 
-  const getComponent = (): JSX.Element | null => {
+  const getReport = (): JSX.Element | null => {
     switch (reportTab) {
       case 0:
-        return <Typography variant="body1">{'General Report'}</Typography>;
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6">{'General Report'}</Typography>
+            <Typography variant="body1">
+              {`Plan ID: ${planId}`}
+              {' section count: ' + planSections.length}
+            </Typography>
+            <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
+            <PriButton
+              variant="contained"
+              onClick={() => {
+                showMessage('General Report button clicked');
+              }}
+              sx={{ mt: 2 }}
+            >
+              {'Generate General Report'}
+            </PriButton>
+            <AltButton
+              variant="outlined"
+              onClick={() => {
+                showMessage('Cancel button clicked');
+              }}
+              sx={{ mt: 2 }}
+            >
+              {'Cancel'}
+            </AltButton>
+          </Box>
+        );
       case 1:
         return <Typography variant="body1">{'Publish Readiness'}</Typography>;
       default:
@@ -106,10 +152,7 @@ export function SimpleReportsTab(props: IProps) {
       id="SimpleReportsTab"
       sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
     >
-      <TabAppBar
-        position="fixed"
-        color="default"
-      >
+      <TabAppBar position="fixed" color="default">
         <TabActions>
           <GrowingSpacer />
           <FilterButton filter={filter} onFilter={handleFilter} />
@@ -126,21 +169,7 @@ export function SimpleReportsTab(props: IProps) {
           {canPublish && <Tab label={'Publish Readiness'} id="report-tab-1" />}
         </Tabs>
 
-        {reportTab === 0 && (
-          <Box>
-            {/* General report content will go here */}
-            {getComponent()}
-            <LinearProgress
-              variant="determinate"
-              value={64}
-              sx={{
-                width: '100%',
-                height: 20,
-                backgroundColor: 'primary.light',
-              }}
-            />
-          </Box>
-        )}
+        <Box>{getReport()}</Box>
       </PaddedBox>
     </Box>
   );
