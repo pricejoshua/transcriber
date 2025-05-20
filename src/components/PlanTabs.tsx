@@ -231,11 +231,6 @@ const ScrollableTabsButtonAuto = (props: IProps) => {
           <h1>
             <SimpleReportsTab
               projectPlans={plans.filter((p) => p.id === plan)}
-              planColumn={true}
-              floatTop={false}
-              step={undefined}
-              orgSteps={undefined}
-              sectionArr={sectionArr}
             />
           </h1>
         )}

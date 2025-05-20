@@ -9,6 +9,16 @@ import {
   BookName,
   PassageD,
   Section,
+  Discussion,
+  GraphicD,
+  GroupMembership,
+  MediaFile,
+  OrgWorkflowStep,
+  PlanD,
+  ProjectD,
+  SectionD,
+  SharedResourceD,
+  WorkflowStep,
 } from '../model';
 import { Box, LinearProgress, Tabs, Tab, Typography } from '@mui/material';
 import {
@@ -31,20 +41,34 @@ import { related, sectionCompare, passageCompare, passageRefText, useTranscripti
 import { getSection } from './AudioTab';
 import { mapNamedFullResponses } from '@orbit/data';
 import { useProjectPermissions } from '../utils/useProjectPermissions';
+import { useOrbitData } from '../hoc/useOrbitData';
+import { OrganizationSchemeStepD } from '../model/organizationSchemeStep';
 
 interface IProps {
   projectPlans: Plan[];
-  planColumn?: boolean;
-  floatTop?: boolean;
-  step?: string;
-  orgSteps?: OrgWorkflowStepD[];
-  sectionArr: [number, string][];
 }
 
 export function SimpleReportsTab(props: IProps) {
-  const { projectPlans, planColumn, floatTop, step, orgSteps, sectionArr } = props;
-  const sectionMap = new Map<number, string>(sectionArr);
+
+  // ORBIT DATA is part of the key to this
+  const passages = useOrbitData<PassageD[]>('passage');
+  const sections = useOrbitData<SectionD[]>('section');
+  const sharedresources = useOrbitData<SharedResourceD[]>('sharedresource');
+  const plans = useOrbitData<PlanD[]>('plan');
+  const projects = useOrbitData<ProjectD[]>('project');
+  const mediafiles = useOrbitData<MediaFile[]>('mediafile');
+  const discussions = useOrbitData<Discussion[]>('discussion');
+  const groupmemberships = useOrbitData<GroupMembership[]>('groupmembership');
+  const graphics = useOrbitData<GraphicD[]>('graphic');
+  const workflowSteps = useOrbitData<WorkflowStep[]>('workflowstep');
+  const orgWorkflowSteps = useOrbitData<OrgWorkflowStep[]>('orgworkflowstep');
+  const organizationSchemeSteps = useOrbitData<OrganizationSchemeStepD[]>(
+    'organizationschemestep'
+  );
   const getTranscription = useTranscription(true);
+
+  const { projectPlans } = props;
+  console.log('projectPlans', projectPlans);
 
   // const t: IReportsTabStrings = useSelector(reportsTabSelector);
   const ts: ISharedStrings = useSelector(sharedSelector);
@@ -59,15 +83,31 @@ export function SimpleReportsTab(props: IProps) {
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
 
-  const handleReportTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleReportTabChange = (
+    event: React.SyntheticEvent,
+    newValue: number
+  ) => {
     setReportTab(newValue);
   };
 
+  const getComponent = (): JSX.Element | null => {
+    switch (reportTab) {
+      case 0:
+        return <Typography variant="body1">{'General Report'}</Typography>;
+      case 1:
+        return <Typography variant="body1">{'Publish Readiness'}</Typography>;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Box id="SimpleReportsTab" sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <Box
+      id="SimpleReportsTab"
+      sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
+    >
       <TabAppBar
         position="fixed"
-        highBar={planColumn || floatTop}
         color="default"
       >
         <TabActions>
@@ -82,16 +122,14 @@ export function SimpleReportsTab(props: IProps) {
           aria-label="report-tabs"
           sx={{ mb: 2 }}
         >
-          <Tab label={"General Report"} id="report-tab-0" />
-          {canPublish && <Tab label={"Publish Readiness"} id="report-tab-1" />}
+          <Tab label={'General Report'} id="report-tab-0" />
+          {canPublish && <Tab label={'Publish Readiness'} id="report-tab-1" />}
         </Tabs>
 
         {reportTab === 0 && (
           <Box>
             {/* General report content will go here */}
-            <Typography variant="body1">
-              {"General report description"}
-            </Typography>
+            {getComponent()}
             <LinearProgress
               variant="determinate"
               value={64}
