@@ -20,7 +20,15 @@ import {
   SharedResourceD,
   WorkflowStep,
 } from '../model';
-import { Box, LinearProgress, Tabs, Tab, Typography, Select, MenuItem } from '@mui/material';
+import {
+  Box,
+  LinearProgress,
+  Tabs,
+  Tab,
+  Typography,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import {
   GrowingSpacer,
   PaddedBox,
@@ -37,6 +45,8 @@ import { useProjectPermissions } from '../utils/useProjectPermissions';
 import { useOrbitData } from '../hoc/useOrbitData';
 import { OrganizationSchemeStepD } from '../model/organizationSchemeStep';
 import { camel2Title } from '../utils';
+import { usePlanType } from '../crud';
+import { set } from 'lodash';
 
 interface IProps {
   projectPlans: Plan[];
@@ -62,6 +72,10 @@ export function SimpleReportsTab(props: IProps) {
   const organizationSchemeSteps = useOrbitData<OrganizationSchemeStepD[]>(
     'organizationschemestep'
   );
+  const getPlanType = usePlanType();
+
+  const [plan, setPlan] = useGlobal('plan');
+  const [isScripture, setScripture] = useState(false);
 
   enum WorkflowType {
     Draft = 'draft',
@@ -75,8 +89,20 @@ export function SimpleReportsTab(props: IProps) {
   // console.log('plans', plans);
   // console.log('projects', projects);
   // console.log('graphics', graphics);
-  console.log('workflowSteps', workflowSteps);
-  console.log('orgWorkflowSteps', orgWorkflowSteps);
+  // console.log('workflowSteps', workflowSteps);
+  // console.log('orgWorkflowSteps', orgWorkflowSteps);
+
+  useEffect(() => {
+    if (projectPlans.length === 1) {
+      if (plan === '') {
+        setPlan(projectPlans[0].id as string); //set the global plan
+        setScripture(getPlanType(projectPlans[0].id as string).scripture);
+      } else {
+        setScripture(getPlanType(plan).scripture);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectPlans, plan]);
 
   const draftWorkflowSteps = orgWorkflowSteps.filter((step) => {
     return step.attributes?.process === WorkflowType.Draft;
@@ -86,29 +112,36 @@ export function SimpleReportsTab(props: IProps) {
     return step.attributes?.process === WorkflowType.Render;
   });
 
-  console.log('draftWorkflowSteps', draftWorkflowSteps);
-  console.log('renderWorkflowSteps', renderWorkflowSteps);
+  // console.log('draftWorkflowSteps', draftWorkflowSteps);
+  // console.log('renderWorkflowSteps', renderWorkflowSteps);
 
   // filter by attributes.sequencenum, keep in order
-  const draftWorkflowStepNames = draftWorkflowSteps.sort((a, b) => {
-    return a.attributes?.sequencenum - b.attributes?.sequencenum;
-  }).map((step) => {
-    return step.attributes?.name;
-  });
+  const draftWorkflowStepNames = draftWorkflowSteps
+    .sort((a, b) => {
+      return a.attributes?.sequencenum - b.attributes?.sequencenum;
+    })
+    .map((step) => {
+      return step.attributes?.name;
+    });
 
+  const renderWorkflowStepNames = renderWorkflowSteps
+    .sort((a, b) => {
+      return a.attributes?.sequencenum - b.attributes?.sequencenum;
+    })
+    .map((step) => {
+      return step.attributes?.name;
+    });
 
-  const renderWorkflowStepNames = renderWorkflowSteps.sort((a, b) => {
-    return a.attributes?.sequencenum - b.attributes?.sequencenum;
-  }).map((step) => {
-    return step.attributes?.name;
-  });
-
-  console.log('draftWorkflowStepNames', draftWorkflowStepNames);
-  console.log('renderWorkflowStepNames', renderWorkflowStepNames);
+  // console.log('draftWorkflowStepNames', draftWorkflowStepNames);
+  // console.log('renderWorkflowStepNames', renderWorkflowStepNames);
 
   // works for both workflowSteps and orgWorkflowSteps
-  const [selectedWorkflowSteps, setSelectedWorkflowSteps] = useState<WorkflowStep[]>([]);
-  const [selectedWorkflowStep, setSelectedWorkflowStep] = useState<WorkflowStep | undefined>(undefined);
+  const [selectedWorkflowSteps, setSelectedWorkflowSteps] = useState<
+    WorkflowStep[]
+  >([]);
+  const [selectedWorkflowStep, setSelectedWorkflowStep] = useState<
+    WorkflowStep | undefined
+  >(undefined);
 
   // Initialize selectedWorkflowSteps with draft workflow steps
   useEffect(() => {
@@ -116,48 +149,72 @@ export function SimpleReportsTab(props: IProps) {
       setSelectedWorkflowSteps(draftWorkflowSteps);
       setSelectedWorkflowStep(draftWorkflowSteps[0]);
     }
+
+    const selectedSections = sections.filter((section) => {
+      const sectionData = section.relationships?.plan.data;
+      if (Array.isArray(sectionData)) {
+        return sectionData.some((item) => item.id === projectPlans[0].id);
+      }
+      return sectionData?.id === projectPlans[0].id;
+    });
+    setSelectedSections(selectedSections);
+
+    const selectedPassages = passages.filter((passage) => {
+      const sectionData = passage.relationships?.section.data;
+      if (Array.isArray(sectionData)) {
+        return sectionData.some((item) => item.id === projectPlans[0].id);
+      }
+      return sectionData?.id === projectPlans[0].id;
+    });
+    setSelectedPassages(selectedPassages);
   }, []);
 
   const planId = projectPlans[0]?.id;
-  const plan = projectPlans[0];
   const planName = projectPlans[0]?.attributes?.name;
 
   const planSections = sections.filter((section) => {
     const planData = section.relationships?.plan.data;
     if (Array.isArray(planData)) {
-      return planData.some(item => item.id === planId);
+      return planData.some((item) => item.id === planId);
     }
     return planData?.id === planId;
   });
 
-  console.log('planSections', planSections);
-
-  planSections.forEach((section) => {
-    console.log('section', section);
-    const sectionPassages = passages.filter((passage) => {
-      const sectionData = passage.relationships?.section.data;
-      if (Array.isArray(sectionData)) {
-        return sectionData.some(item => item.id === section.id);
-      }
-      return sectionData?.id === section.id;
-    });
-    sectionPassages.forEach((passage) => {
-      console.log('passage', passage);
-      const passageGraphics = graphics.filter((graphic) => {
-        const passageData = graphic.relationships?.passage.data;
-        if (Array.isArray(passageData)) {
-          return passageData.some(item => item.id === passage.id);
-        }
-        return passageData?.id === passage.id;
+  // passage should be in any planSections
+  const planPassages = passages.filter((passage) => {
+    // console.log('passage', passage);
+    const sectionData = passage.relationships?.section.data;
+    if (Array.isArray(sectionData)) {
+      return sectionData.some((item) => {
+        return planSections.some((section) => section.id === item.id);
       });
-    });
+    }
+    return planSections.some((section) => section.id === sectionData?.id);
   });
 
+  // console.log('planSections', planSections);
+  // console.log('planPassages', planPassages);
 
-  console.log('planId', planId);
-  console.log('plan', plan);
-
-  console.log('plan.relationships', plan.relationships);
+  // planSections.forEach((section) => {
+  //   console.log('section', section);
+  //   const sectionPassages = passages.filter((passage) => {
+  //     const sectionData = passage.relationships?.section.data;
+  //     if (Array.isArray(sectionData)) {
+  //       return sectionData.some(item => item.id === section.id);
+  //     }
+  //     return sectionData?.id === section.id;
+  //   });
+  //   sectionPassages.forEach((passage) => {
+  //     console.log('passage', passage);
+  //     const passageGraphics = graphics.filter((graphic) => {
+  //       const passageData = graphic.relationships?.passage.data;
+  //       if (Array.isArray(passageData)) {
+  //         return passageData.some(item => item.id === passage.id);
+  //       }
+  //       return passageData?.id === passage.id;
+  //     });
+  //   });
+  // });
 
   // const t: IReportsTabStrings = useSelector(reportsTabSelector);
   const ts: ISharedStrings = useSelector(sharedSelector);
@@ -171,6 +228,9 @@ export function SimpleReportsTab(props: IProps) {
 
   const [minimumStep, setMinimumStep] = useState<number | undefined>(undefined);
 
+  const [selectedSections, setSelectedSections] = useState<Section[]>([]);
+  const [selectedPassages, setSelectedPassages] = useState<Passage[]>([]);
+
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
 
@@ -183,7 +243,36 @@ export function SimpleReportsTab(props: IProps) {
 
   const handleWorkflowStepChange = (step: WorkflowStep | undefined) => {
     setSelectedWorkflowStep(step);
-    if (step) {
+    if (selectedWorkflowStep) {
+      // const tempSelectedSections = planSections.filter((section) => {
+      //   console.log('section', section);
+
+      // });
+      console.log('selectedWorkflowStep', selectedWorkflowStep);
+      console.log('planSections', planSections);
+      console.log('planPassages', planPassages);
+      const tempSelectedPassages = planPassages.filter((passage) => {
+        const passageData = passage.attributes?.stepComplete;
+        const passageSteps = passageData
+          ? JSON.parse(passageData) : undefined;
+        if (passageSteps && passageSteps.completed) {
+          console.log('passageStep', passageSteps);
+          return passageSteps.completed.some((step: any) => {
+            console.log('step', step);
+            console.log('selectedWorkflowStep', selectedWorkflowStep);
+            console.log('step.stepid', step.stepid);
+            console.log('selectedWorkflowStep.id', selectedWorkflowStep.id);
+            console.log('selectedWorkflowStep.keys.remoteId', selectedWorkflowStep?.keys?.remoteId);
+            console.log('step.stepid === selectedWorkflowStep?.keys?.remoteId', step.stepid === selectedWorkflowStep?.keys?.remoteId);
+            const boolTest = step.stepid === selectedWorkflowStep?.keys?.remoteId;
+            console.log('boolTest', boolTest);
+            return boolTest;
+          });
+        }
+        return false;
+      });
+      setSelectedPassages(tempSelectedPassages);
+      console.log('tempSelectedPassages', tempSelectedPassages);
     }
   };
 
@@ -196,24 +285,27 @@ export function SimpleReportsTab(props: IProps) {
               labelId="select-workflow-step-label"
               id="select-workflow-step"
               value={selectedWorkflowStep?.id || ''}
-              label={"Select Workflow Step"}
+              label={'Select Workflow Step'}
               onChange={(event) => {
                 const selectedId = event.target.value;
-                const selectedStep = selectedWorkflowSteps.find(step => step.id === selectedId);
+                const selectedStep = selectedWorkflowSteps.find(
+                  (step) => step.id === selectedId
+                );
                 console.log('selectedStep', selectedStep);
                 handleWorkflowStepChange(selectedStep);
               }}
             >
-            {selectedWorkflowSteps.map((step) => (
-              <MenuItem key={step.id} value={step.id}>
-                {camel2Title(step.attributes?.name)}
-              </MenuItem>
-            ))}
+              {selectedWorkflowSteps.map((step) => (
+                <MenuItem key={step.id} value={step.id}>
+                  {camel2Title(step.attributes?.name)}
+                </MenuItem>
+              ))}
             </Select>
             <Typography variant="h6">{'General Report'}</Typography>
             <Typography variant="body1">
               {`Plan ID: ${planId}`}
               {' section count: ' + planSections.length}
+              {' passage count: ' + planPassages.length}
             </Typography>
             <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
             <PriButton
