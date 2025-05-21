@@ -20,7 +20,7 @@ import {
   SharedResourceD,
   WorkflowStep,
 } from '../model';
-import { Box, LinearProgress, Tabs, Tab, Typography } from '@mui/material';
+import { Box, LinearProgress, Tabs, Tab, Typography, Select, MenuItem } from '@mui/material';
 import {
   GrowingSpacer,
   PaddedBox,
@@ -36,6 +36,7 @@ import { sharedSelector } from '../selector';
 import { useProjectPermissions } from '../utils/useProjectPermissions';
 import { useOrbitData } from '../hoc/useOrbitData';
 import { OrganizationSchemeStepD } from '../model/organizationSchemeStep';
+import { camel2Title } from '../utils';
 
 interface IProps {
   projectPlans: Plan[];
@@ -62,6 +63,11 @@ export function SimpleReportsTab(props: IProps) {
     'organizationschemestep'
   );
 
+  enum WorkflowType {
+    Draft = 'draft',
+    Render = 'Render',
+  }
+
   const { projectPlans } = props;
   // console.log('projectPlans', projectPlans);
   // console.log('passages', passages);
@@ -69,7 +75,48 @@ export function SimpleReportsTab(props: IProps) {
   // console.log('plans', plans);
   // console.log('projects', projects);
   // console.log('graphics', graphics);
-  // console.log('workflowSteps', workflowSteps);
+  console.log('workflowSteps', workflowSteps);
+  console.log('orgWorkflowSteps', orgWorkflowSteps);
+
+  const draftWorkflowSteps = orgWorkflowSteps.filter((step) => {
+    return step.attributes?.process === WorkflowType.Draft;
+  });
+
+  const renderWorkflowSteps = workflowSteps.filter((step) => {
+    return step.attributes?.process === WorkflowType.Render;
+  });
+
+  console.log('draftWorkflowSteps', draftWorkflowSteps);
+  console.log('renderWorkflowSteps', renderWorkflowSteps);
+
+  // filter by attributes.sequencenum, keep in order
+  const draftWorkflowStepNames = draftWorkflowSteps.sort((a, b) => {
+    return a.attributes?.sequencenum - b.attributes?.sequencenum;
+  }).map((step) => {
+    return step.attributes?.name;
+  });
+
+
+  const renderWorkflowStepNames = renderWorkflowSteps.sort((a, b) => {
+    return a.attributes?.sequencenum - b.attributes?.sequencenum;
+  }).map((step) => {
+    return step.attributes?.name;
+  });
+
+  console.log('draftWorkflowStepNames', draftWorkflowStepNames);
+  console.log('renderWorkflowStepNames', renderWorkflowStepNames);
+
+  // works for both workflowSteps and orgWorkflowSteps
+  const [selectedWorkflowSteps, setSelectedWorkflowSteps] = useState<WorkflowStep[]>([]);
+  const [selectedWorkflowStep, setSelectedWorkflowStep] = useState<WorkflowStep | undefined>(undefined);
+
+  // Initialize selectedWorkflowSteps with draft workflow steps
+  useEffect(() => {
+    if (draftWorkflowSteps.length > 0) {
+      setSelectedWorkflowSteps(draftWorkflowSteps);
+      setSelectedWorkflowStep(draftWorkflowSteps[0]);
+    }
+  }, []);
 
   const planId = projectPlans[0]?.id;
   const plan = projectPlans[0];
@@ -81,6 +128,29 @@ export function SimpleReportsTab(props: IProps) {
       return planData.some(item => item.id === planId);
     }
     return planData?.id === planId;
+  });
+
+  console.log('planSections', planSections);
+
+  planSections.forEach((section) => {
+    console.log('section', section);
+    const sectionPassages = passages.filter((passage) => {
+      const sectionData = passage.relationships?.section.data;
+      if (Array.isArray(sectionData)) {
+        return sectionData.some(item => item.id === section.id);
+      }
+      return sectionData?.id === section.id;
+    });
+    sectionPassages.forEach((passage) => {
+      console.log('passage', passage);
+      const passageGraphics = graphics.filter((graphic) => {
+        const passageData = graphic.relationships?.passage.data;
+        if (Array.isArray(passageData)) {
+          return passageData.some(item => item.id === passage.id);
+        }
+        return passageData?.id === passage.id;
+      });
+    });
   });
 
 
@@ -99,6 +169,8 @@ export function SimpleReportsTab(props: IProps) {
   const [filter, setFilter] = useState(false);
   const [reportTab, setReportTab] = useState(0);
 
+  const [minimumStep, setMinimumStep] = useState<number | undefined>(undefined);
+
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
 
@@ -109,11 +181,35 @@ export function SimpleReportsTab(props: IProps) {
     setReportTab(newValue);
   };
 
+  const handleWorkflowStepChange = (step: WorkflowStep | undefined) => {
+    setSelectedWorkflowStep(step);
+    if (step) {
+    }
+  };
+
   const getReport = (): JSX.Element | null => {
     switch (reportTab) {
       case 0:
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', width: '80%' }}>
+            <Select
+              labelId="select-workflow-step-label"
+              id="select-workflow-step"
+              value={selectedWorkflowStep?.id || ''}
+              label={"Select Workflow Step"}
+              onChange={(event) => {
+                const selectedId = event.target.value;
+                const selectedStep = selectedWorkflowSteps.find(step => step.id === selectedId);
+                console.log('selectedStep', selectedStep);
+                handleWorkflowStepChange(selectedStep);
+              }}
+            >
+            {selectedWorkflowSteps.map((step) => (
+              <MenuItem key={step.id} value={step.id}>
+                {camel2Title(step.attributes?.name)}
+              </MenuItem>
+            ))}
+            </Select>
             <Typography variant="h6">{'General Report'}</Typography>
             <Typography variant="body1">
               {`Plan ID: ${planId}`}
