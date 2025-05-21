@@ -256,7 +256,7 @@ export function SimpleReportsTab(props: IProps) {
         const passageSteps = passageData
           ? JSON.parse(passageData) : undefined;
         if (passageSteps && passageSteps.completed) {
-          console.log('passageStep', passageSteps);
+          console.log('passageSteps', passageSteps);
           return passageSteps.completed.some((step: any) => {
             console.log('step', step);
             console.log('selectedWorkflowStep', selectedWorkflowStep);
@@ -264,7 +264,7 @@ export function SimpleReportsTab(props: IProps) {
             console.log('selectedWorkflowStep.id', selectedWorkflowStep.id);
             console.log('selectedWorkflowStep.keys.remoteId', selectedWorkflowStep?.keys?.remoteId);
             console.log('step.stepid === selectedWorkflowStep?.keys?.remoteId', step.stepid === selectedWorkflowStep?.keys?.remoteId);
-            const boolTest = step.stepid === selectedWorkflowStep?.keys?.remoteId;
+            const boolTest = step.complete === true && step.stepid === selectedWorkflowStep?.keys?.remoteId;
             console.log('boolTest', boolTest);
             return boolTest;
           });
@@ -297,15 +297,15 @@ export function SimpleReportsTab(props: IProps) {
             >
               {selectedWorkflowSteps.map((step) => (
                 <MenuItem key={step.id} value={step.id}>
-                  {camel2Title(step.attributes?.name)}
+                  {step.attributes?.name}
                 </MenuItem>
               ))}
             </Select>
             <Typography variant="h6">{'General Report'}</Typography>
             <Typography variant="body1">
               {`Plan ID: ${planId}`}
-              {' section count: ' + planSections.length}
-              {' passage count: ' + planPassages.length}
+              {' section count: ' + selectedSections.length}
+              {' passage count: ' + selectedPassages.length}
             </Typography>
             <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
             <PriButton
