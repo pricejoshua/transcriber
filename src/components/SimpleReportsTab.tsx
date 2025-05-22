@@ -240,14 +240,10 @@ export function SimpleReportsTab(props: IProps) {
   ) => {
     setReportTab(newValue);
   };
-
+  // TODO: Seems to be firing incorrectly
   const handleWorkflowStepChange = (step: WorkflowStep | undefined) => {
     setSelectedWorkflowStep(step);
     if (selectedWorkflowStep) {
-      // const tempSelectedSections = planSections.filter((section) => {
-      //   console.log('section', section);
-
-      // });
       console.log('selectedWorkflowStep', selectedWorkflowStep);
       console.log('planSections', planSections);
       console.log('planPassages', planPassages);
@@ -255,18 +251,12 @@ export function SimpleReportsTab(props: IProps) {
         const passageData = passage.attributes?.stepComplete;
         const passageSteps = passageData
           ? JSON.parse(passageData) : undefined;
+        console.log('passageData', passageData);
+        console.log('passage name', passage.attributes?.name);
         if (passageSteps && passageSteps.completed) {
           console.log('passageSteps', passageSteps);
           return passageSteps.completed.some((step: any) => {
-            console.log('step', step);
-            console.log('selectedWorkflowStep', selectedWorkflowStep);
-            console.log('step.stepid', step.stepid);
-            console.log('selectedWorkflowStep.id', selectedWorkflowStep.id);
-            console.log('selectedWorkflowStep.keys.remoteId', selectedWorkflowStep?.keys?.remoteId);
-            console.log('step.stepid === selectedWorkflowStep?.keys?.remoteId', step.stepid === selectedWorkflowStep?.keys?.remoteId);
-            const boolTest = step.complete === true && step.stepid === selectedWorkflowStep?.keys?.remoteId;
-            console.log('boolTest', boolTest);
-            return boolTest;
+            return step.complete === true && step.stepid === selectedWorkflowStep?.keys?.remoteId;
           });
         }
         return false;
@@ -284,19 +274,19 @@ export function SimpleReportsTab(props: IProps) {
             <Select
               labelId="select-workflow-step-label"
               id="select-workflow-step"
-              value={selectedWorkflowStep?.id || ''}
+              value={selectedWorkflowStep?.keys?.remoteId || ''}
               label={'Select Workflow Step'}
               onChange={(event) => {
                 const selectedId = event.target.value;
                 const selectedStep = selectedWorkflowSteps.find(
-                  (step) => step.id === selectedId
+                  (step) => step.keys?.remoteId === selectedId
                 );
                 console.log('selectedStep', selectedStep);
                 handleWorkflowStepChange(selectedStep);
               }}
             >
               {selectedWorkflowSteps.map((step) => (
-                <MenuItem key={step.id} value={step.id}>
+                <MenuItem key={step.keys?.remoteId} value={step.keys?.remoteId}>
                   {step.attributes?.name}
                 </MenuItem>
               ))}
