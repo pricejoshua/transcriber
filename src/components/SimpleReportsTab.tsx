@@ -106,7 +106,6 @@ export function SimpleReportsTab(props: IProps) {
     return step.attributes?.process === WorkflowType.Render;
   });
 
-
   // filter by attributes.sequencenum, keep in order
   const draftWorkflowStepNames = draftWorkflowSteps
     .sort((a, b) => {
@@ -136,16 +135,21 @@ export function SimpleReportsTab(props: IProps) {
   useEffect(() => {
     if (draftWorkflowSteps.length > 0) {
       setSelectedWorkflowSteps(draftWorkflowSteps);
-      setSelectedWorkflowStep(draftWorkflowSteps[0]);
     }
 
-    const selectedSections = sections.filter((section) => {
-      const sectionData = section.relationships?.plan.data;
-      if (Array.isArray(sectionData)) {
-        return sectionData.some((item) => item.id === projectPlans[0].id);
-      }
-      return sectionData?.id === projectPlans[0].id;
-    });
+    const selectedSections = sections
+      .filter((section) => {
+        const sectionData = section.relationships?.plan.data;
+        if (Array.isArray(sectionData)) {
+          return sectionData.some((item) => item.id === projectPlans[0].id);
+        }
+        return sectionData?.id === projectPlans[0].id;
+      })
+      .sort((a, b) => {
+        return (
+          (a.attributes?.sequencenum || 0) - (b.attributes?.sequencenum || 0)
+        );
+      });
     setSelectedSections(selectedSections);
 
     const selectedPassages = passages.filter((passage) => {
@@ -156,6 +160,19 @@ export function SimpleReportsTab(props: IProps) {
       return sectionData?.id === projectPlans[0].id;
     });
     setSelectedPassages(selectedPassages);
+
+    const selectedGraphics = graphics.filter((graphic) => {
+      if (graphic.attributes?.resourceType === 'section') {
+        // graphic.attributes?.resourceId is in the selected sections ID
+        return selectedSections.some(
+          (section) => section.id === String(graphic.attributes?.resourceId)
+        );
+      }
+      return false;
+    });
+
+    setSelectedGraphics(selectedGraphics);
+    console.log('selectedGraphics', selectedGraphics);
   }, []);
 
   const planId = projectPlans[0]?.id;
@@ -194,6 +211,7 @@ export function SimpleReportsTab(props: IProps) {
 
   const [selectedSections, setSelectedSections] = useState<Section[]>([]);
   const [selectedPassages, setSelectedPassages] = useState<Passage[]>([]);
+  const [selectedGraphics, setSelectedGraphics] = useState<GraphicD[]>([]);
 
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
@@ -204,17 +222,19 @@ export function SimpleReportsTab(props: IProps) {
   ) => {
     setReportTab(newValue);
   };
-  // TODO: Seems to be firing incorrectly
+
   const handleWorkflowStepChange = (step: WorkflowStep | undefined) => {
     setSelectedWorkflowStep(step);
     if (step) {
       const tempSelectedPassages = planPassages.filter((passage) => {
         const passageData = passage.attributes?.stepComplete;
-        const passageSteps = passageData
-          ? JSON.parse(passageData) : undefined;
+        const passageSteps = passageData ? JSON.parse(passageData) : undefined;
         if (passageSteps && passageSteps.completed) {
           return passageSteps.completed.some((stepItem: any) => {
-            return stepItem.complete === true && stepItem.stepid === step?.keys?.remoteId;
+            return (
+              stepItem.complete === true &&
+              stepItem.stepid === step?.keys?.remoteId
+            );
           });
         }
         return false;
@@ -233,6 +253,12 @@ export function SimpleReportsTab(props: IProps) {
               id="select-workflow-step"
               value={selectedWorkflowStep?.keys?.remoteId || ''}
               label={'Select Workflow Step'}
+              displayEmpty
+              renderValue={
+                selectedWorkflowStep
+                  ? undefined
+                  : () => 'Select a workflow step'
+              }
               onChange={(event) => {
                 const selectedId = event.target.value;
                 const selectedStep = selectedWorkflowSteps.find(
@@ -254,71 +280,153 @@ export function SimpleReportsTab(props: IProps) {
               {' passage count: ' + selectedPassages.length}
             </Typography>
             <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
-            {/* Tree of all movements, with sections underneath, with passages underneath */}
+            {selectedWorkflowStep &&
+              (() => {
+                // Create hierarchical structure based on section levels
+                const buildSectionHierarchy = (sections: Section[]) => {
+                  const sortedSections = sections.sort(
+                    (a, b) =>
+                      (a.attributes?.sequencenum || 0) -
+                      (b.attributes?.sequencenum || 0)
+                  );
 
-            {
-              selectedSections.map((section) => {
-                console.log('section', section);
-                console.log('selectedPassages', selectedPassages);
-                const sectionPassages = selectedPassages.filter((passage) => {
-                  const sectionData = passage.relationships?.section.data;
-                  console.log('passageSectionData', sectionData);
-                  if (Array.isArray(sectionData)) {
-                    return sectionData.some((item) => item.id === section.id);
-                  }
-                  return sectionData?.id === section.id;
-                }
-                );
-                return (
-                  <ProgressTreeNode
-                    initialProgress={50}
-                    label={section.attributes?.name}
-                    data={
-                      <Typography variant="body2">
-                        {`Passages: ${sectionPassages.length}`}
-                      </Typography>
-                    }
-                  >
-                    {sectionPassages.map((passage) => {
-                      const passageData = passage.attributes?.stepComplete;
-                      const passageSteps = passageData
-                        ? JSON.parse(passageData)
-                        : undefined;
-                      const passageStep = passageSteps
-                        ? passageSteps.completed.find(
-                            (stepItem: any) =>
-                              stepItem.stepid ===
-                              selectedWorkflowStep?.keys?.remoteId
-                          )
-                        : undefined;
-                      const passageProgress = passageStep
-                        ? passageStep.complete
-                          ? 100
-                          : passageStep.progress
-                        : 0;
-                      return (
-                        <ProgressTreeNode
-                          initialProgress={passageProgress}
-                          label={passage.attributes?.book}
-                          data={
-                            <Typography variant="body2">
-                              {`Progress: ${passageProgress}%`}
-                            </Typography>
+                  const renderSectionTree = (
+                    currentLevel: number,
+                    startIndex: number
+                  ): { elements: JSX.Element[]; nextIndex: number } => {
+                    const elements: JSX.Element[] = [];
+                    let index = startIndex;
+
+                    while (index < sortedSections.length) {
+                      const section = sortedSections[index];
+                      const sectionLevel = section.attributes?.level || 1;
+
+                      // If we encounter a section at a higher level (lower number), we should stop
+                      if (sectionLevel < currentLevel) {
+                        break;
+                      }
+
+                      // If this section is at our current level, process it
+                      if (sectionLevel === currentLevel) {
+                        const sectionPassages = selectedPassages.filter(
+                          (passage) => {
+                            const sectionData =
+                              passage.relationships?.section.data;
+                            if (Array.isArray(sectionData)) {
+                              return sectionData.some(
+                                (item) => item.id === section.id
+                              );
+                            }
+                            return sectionData?.id === section.id;
                           }
-                        >
-                          <Typography variant="body2">
-                            {`Passage ID: ${passage.id}`}
-                          </Typography>
-                          <Typography variant="body2">
-                            {`Passage Step: ${passageStep?.stepid}`}
-                          </Typography>
-                        </ProgressTreeNode>
-                      );
-                    })}
-                  </ProgressTreeNode>
-                );
-              })
-            }
+                        );
+
+                        // Calculate section progress
+                        const completedPassages = sectionPassages.filter(
+                          (passage) => {
+                            const passageData =
+                              passage.attributes?.stepComplete;
+                            const passageSteps = passageData
+                              ? JSON.parse(passageData)
+                              : undefined;
+                            const passageStep = passageSteps?.completed?.find(
+                              (stepItem: any) =>
+                                stepItem.stepid ===
+                                selectedWorkflowStep?.keys?.remoteId
+                            );
+                            return passageStep?.complete === true;
+                          }
+                        );
+
+                        const sectionProgress =
+                          sectionPassages.length > 0
+                            ? Math.round(
+                                (completedPassages.length /
+                                  sectionPassages.length) *
+                                  100
+                              )
+                            : 0;
+
+                        // Look ahead to find child sections
+                        const childResult = renderSectionTree(
+                          currentLevel + 1,
+                          index + 1
+                        );
+                        const childElements = childResult.elements;
+                        index = childResult.nextIndex;
+
+                        elements.push(
+                          <ProgressTreeNode
+                            key={section.id}
+                            initialProgress={sectionProgress}
+                            label={section.attributes?.name}
+                            data={
+                              <Typography variant="body2">
+                                {`Passages: ${sectionPassages.length}`}
+                              </Typography>
+                            }
+                            initialExpanded={true}
+                          >
+                            {/* Render child sections first */}
+                            {childElements}
+
+                            {/* Then render passages for this section */}
+                            {sectionPassages.map((passage) => {
+                              const passageData =
+                                passage.attributes?.stepComplete;
+                              const passageSteps = passageData
+                                ? JSON.parse(passageData)
+                                : undefined;
+                              const passageStep = passageSteps?.completed?.find(
+                                (stepItem: any) =>
+                                  stepItem.stepid ===
+                                  selectedWorkflowStep?.keys?.remoteId
+                              );
+                              const passageProgress = passageStep
+                                ? passageStep.complete
+                                  ? 100
+                                  : passageStep.progress || 0
+                                : 0;
+
+                              return (
+                                <ProgressTreeNode
+                                  key={passage.id}
+                                  initialProgress={passageProgress}
+                                  label={passage.attributes?.book}
+                                  data={
+                                    <Typography variant="body2">
+                                      {`Progress: ${passageProgress}%`}
+                                    </Typography>
+                                  }
+                                >
+                                  <Typography variant="body2">
+                                    {`Passage ID: ${passage.id}`}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {`Passage Step: ${
+                                      passageStep?.stepid || 'None'
+                                    }`}
+                                  </Typography>
+                                </ProgressTreeNode>
+                              );
+                            })}
+                          </ProgressTreeNode>
+                        );
+                      } else {
+                        // If we encounter a section at a lower level (higher number), skip it
+                        // as it should be handled by a parent section
+                        index++;
+                      }
+                    }
+
+                    return { elements, nextIndex: index };
+                  };
+
+                  return renderSectionTree(1, 0).elements;
+                };
+
+                return buildSectionHierarchy(selectedSections);
+              })()}
             <PriButton
               variant="contained"
               onClick={() => {
