@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 import {
-  IState,
   Plan,
   ISharedStrings,
   OrgWorkflowStepD,
   Passage,
-  BookName,
   PassageD,
   Section,
   Discussion,
@@ -19,6 +17,7 @@ import {
   SectionD,
   SharedResourceD,
   WorkflowStep,
+  Bible,
 } from '../model';
 import {
   Box,
@@ -28,7 +27,6 @@ import {
   Typography,
   Select,
   MenuItem,
-  Button,
 } from '@mui/material';
 import {
   GrowingSpacer,
@@ -45,11 +43,12 @@ import { sharedSelector } from '../selector';
 import { useProjectPermissions } from '../utils/useProjectPermissions';
 import { useOrbitData } from '../hoc/useOrbitData';
 import { OrganizationSchemeStepD } from '../model/organizationSchemeStep';
-import { camel2Title } from '../utils';
-import { usePlanType } from '../crud';
-import { set } from 'lodash';
+import { usePlanType, useBible } from '../crud';
+import {
+  TreeBuilder,
+  ProgressTreeNode as TreeNodeType,
+} from '../utils/TreeBuilder';
 import ProgressTreeNode from './ProgressTreeNode';
-import { select } from 'xpath';
 
 interface IProps {
   projectPlans: Plan[];
@@ -101,8 +100,12 @@ export function SimpleReportsTab(props: IProps) {
   const [selectedPassages, setSelectedPassages] = useState<Passage[]>([]);
   const [workflowPassages, setWorkflowPassages] = useState<Passage[]>([]);
   const [selectedGraphics, setSelectedGraphics] = useState<GraphicD[]>([]);
+  const [org] = useGlobal('organization');
+
+  const [bible, setBible] = useState<Bible | undefined>(undefined);
 
   const { projectPlans } = props;
+  console.log(props);
 
   useEffect(() => {
     if (projectPlans.length === 1) {
@@ -197,6 +200,9 @@ export function SimpleReportsTab(props: IProps) {
     });
 
     setSelectedGraphics(selectedGraphics);
+
+
+
   }, []);
 
   const planId = projectPlans[0]?.id;
@@ -220,6 +226,54 @@ export function SimpleReportsTab(props: IProps) {
     }
     return planSections.some((section) => section.id === sectionData?.id);
   });
+
+  // Build tree structure using TreeBuilder
+  const treeData = useMemo(() => {
+    if (!planId || !selectedWorkflowStep) {
+      return [];
+    }
+
+    const treeBuilder = new TreeBuilder({
+      planId,
+      groupByChapters: true,
+      calculateProgress: true,
+      selectedWorkflowStep,
+    });
+
+    return treeBuilder.buildUnifiedTree(selectedSections, selectedPassages);
+  }, [planId, selectedWorkflowStep, selectedSections, selectedPassages]);
+
+  // Get overall progress from tree data
+  const overallProgress = useMemo(() => {
+    if (treeData.length === 0) {
+      return {
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+        total: 0,
+        percentage: 0,
+      };
+    }
+
+    // Aggregate progress from all root nodes
+    const totals = treeData.reduce(
+      (acc, node) => ({
+        completed: acc.completed + node.progress.completed,
+        inProgress: acc.inProgress + node.progress.inProgress,
+        notStarted: acc.notStarted + node.progress.notStarted,
+        total: acc.total + node.progress.total,
+      }),
+      { completed: 0, inProgress: 0, notStarted: 0, total: 0 }
+    );
+
+    return {
+      ...totals,
+      percentage:
+        totals.total > 0
+          ? Math.round((totals.completed / totals.total) * 100)
+          : 0,
+    };
+  }, [treeData]);
 
   // Placeholder handlers
   const handleFilter = () => setFilter(!filter);
@@ -250,6 +304,84 @@ export function SimpleReportsTab(props: IProps) {
       setWorkflowPassages(tempSelectedPassages);
       console.log('Workflow Passages', tempSelectedPassages);
     }
+  };
+
+  // Recursive function to render tree nodes
+  const renderTreeNode = (node: TreeNodeType): JSX.Element => {
+    const { data, progress, nodeType, children } = node;
+
+    // Determine label based on node type
+    const getLabel = () => {
+      if (nodeType === 'section') {
+        const section = data as Section;
+        console.log('Section', section);
+        return section.attributes?.name || `Section ${section.id}`;
+      } else if (nodeType === 'chapter') {
+        const passage = data as Passage;
+        console.log('Chapter Passage', passage);
+        return passage.attributes?.title || `Chapter: ${passage.id}`;
+      } else {
+        const passage = data as Passage;
+        console.log('Passage', passage);
+        return `${passage.attributes?.reference || passage.id}`;
+      }
+    };
+
+    // Determine progress display based on node type
+    const getProgressData = () => {
+      if (nodeType === 'passage') {
+        return (
+          <Box>
+            <Typography variant="body2">
+              {`Progress: ${progress.percentage}%`}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              sx={{ fontSize: '0.8rem' }}
+            >
+              {`Status: ${
+                progress.percentage === 100
+                  ? 'Complete'
+                  : progress.percentage > 0
+                  ? 'In Progress'
+                  : 'Not Started'
+              }`}
+            </Typography>
+          </Box>
+        );
+      } else {
+        return (
+          <Box>
+            <Typography variant="body2">
+              {nodeType === 'section'
+                ? `Passages: ${progress.total}`
+                : `Chapter Passages: ${progress.total}`}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              sx={{ fontSize: '0.8rem' }}
+            >
+              {`Complete: ${progress.completed} | In Progress: ${progress.inProgress} | Not Started: ${progress.notStarted}`}
+            </Typography>
+          </Box>
+        );
+      }
+    };
+
+    return (
+      <ProgressTreeNode
+        key={node.id}
+        initialProgress={progress.percentage}
+        label={getLabel()}
+        data={getProgressData()}
+        initialExpanded={false}
+        autoProgress={nodeType !== 'passage'}
+      >
+        {children.map((child: TreeNodeType) => renderTreeNode(child))}
+      </ProgressTreeNode>
+    );
   };
 
   const getReport = (): JSX.Element | null => {
@@ -291,517 +423,66 @@ export function SimpleReportsTab(props: IProps) {
             <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
 
             {/* Overall progress stats */}
-            {selectedWorkflowStep &&
-              (() => {
-                // Calculate overall plan progress stats
-                const completedPassages = selectedPassages.filter((passage) => {
-                  const passageData = passage.attributes?.stepComplete;
-                  const passageSteps = passageData
-                    ? JSON.parse(passageData)
-                    : undefined;
-                  const passageStep = passageSteps?.completed?.find(
-                    (stepItem: any) =>
-                      stepItem.stepid === selectedWorkflowStep?.keys?.remoteId
-                  );
-                  return passageStep?.complete === true;
-                });
-
-                const inProgressPassages = selectedPassages.filter(
-                  (passage) => {
-                    const passageData = passage.attributes?.stepComplete;
-                    const passageSteps = passageData
-                      ? JSON.parse(passageData)
-                      : undefined;
-                    const passageStep = passageSteps?.completed?.find(
-                      (stepItem: any) =>
-                        stepItem.stepid === selectedWorkflowStep?.keys?.remoteId
-                    );
-                    return (
-                      passageStep &&
-                      !passageStep.complete &&
-                      (passageStep.progress || 0) > 0
-                    );
-                  }
-                );
-
-                const totalPassages = selectedPassages.length;
-                const completedCount = completedPassages.length;
-                const inProgressCount = inProgressPassages.length;
-                const notStartedCount =
-                  totalPassages - completedCount - inProgressCount;
-                const overallProgress =
-                  totalPassages > 0
-                    ? Math.round((completedCount / totalPassages) * 100)
-                    : 0;
-
-                return (
-                  <Box
-                    sx={{
-                      my: 2,
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                    }}
-                  >
-                    <Typography variant="h6">
-                      Overall Progress: {overallProgress}%
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={overallProgress}
-                      sx={{ my: 1, height: 10 }}
-                    />
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        mt: 1,
-                      }}
-                    >
-                      <Typography variant="body2" color="primary">
-                        Complete: {completedCount} (
-                        {Math.round((completedCount / totalPassages) * 100)}%)
-                      </Typography>
-                      <Typography variant="body2" color="secondary">
-                        In Progress: {inProgressCount} (
-                        {Math.round((inProgressCount / totalPassages) * 100)}%)
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Not Started: {notStartedCount} (
-                        {Math.round((notStartedCount / totalPassages) * 100)}%)
-                      </Typography>
-                    </Box>
-                  </Box>
-                );
-              })()}
-            {selectedWorkflowStep &&
-              (() => {
-                // Create hierarchical structure based on section levels
-                const buildSectionHierarchy = (sections: Section[]) => {
-                  const sortedSections = sections.sort(
-                    (a, b) =>
-                      (a.attributes?.sequencenum || 0) -
-                      (b.attributes?.sequencenum || 0)
-                  );
-
-                  const renderSectionTree = (
-                    currentLevel: number,
-                    startIndex: number
-                  ): { elements: JSX.Element[]; nextIndex: number } => {
-                    const elements: JSX.Element[] = [];
-                    let index = startIndex;
-
-                    while (index < sortedSections.length) {
-                      const section = sortedSections[index];
-                      const sectionLevel = section.attributes?.level || 1;
-
-                      // If we encounter a section at a higher level (lower number), we should stop
-                      if (sectionLevel < currentLevel) {
-                        break;
-                      }
-
-                      // If this section is at our current level, process it
-                      if (sectionLevel === currentLevel) {
-                        console.log(selectedPassages);
-                        const sectionPassages = selectedPassages.filter(
-                          (passage) => {
-                            const sectionData =
-                              passage.relationships?.section.data;
-                            if (Array.isArray(sectionData)) {
-                              return sectionData.some(
-                                (item) => item.id === section.id
-                              );
-                            }
-                            return sectionData?.id === section.id;
-                          }
-                        );
-
-                        // Calculate section progress
-                        const completedPassages = sectionPassages.filter(
-                          (passage) => {
-                            const passageData =
-                              passage.attributes?.stepComplete;
-                            const passageSteps = passageData
-                              ? JSON.parse(passageData)
-                              : undefined;
-                            const passageStep = passageSteps?.completed?.find(
-                              (stepItem: any) =>
-                                stepItem.stepid ===
-                                selectedWorkflowStep?.keys?.remoteId
-                            );
-                            return passageStep?.complete === true;
-                          }
-                        );
-
-                        console.log(section.attributes.name, sectionPassages);
-
-                        const sectionProgress =
-                          sectionPassages.length > 0
-                            ? Math.round(
-                                (completedPassages.length /
-                                  sectionPassages.length) *
-                                  100
-                              )
-                            : 0;
-
-                        // Track in-progress passages for the section
-                        const inProgressPassages = sectionPassages.filter(
-                          (passage) => {
-                            const passageData =
-                              passage.attributes?.stepComplete;
-                            const passageSteps = passageData
-                              ? JSON.parse(passageData)
-                              : undefined;
-                            const passageStep = passageSteps?.completed?.find(
-                              (stepItem: any) =>
-                                stepItem.stepid ===
-                                selectedWorkflowStep?.keys?.remoteId
-                            );
-                            return (
-                              passageStep &&
-                              !passageStep.complete &&
-                              (passageStep.progress || 0) > 0
-                            );
-                          }
-                        );
-
-                        // Calculate additional progress stats for the section
-                        const totalPassages = sectionPassages.length;
-                        const completedCount = completedPassages.length;
-                        const inProgressCount = inProgressPassages.length;
-
-                        // Look ahead to find child sections
-                        const childResult = renderSectionTree(
-                          currentLevel + 1,
-                          index + 1
-                        );
-                        const childElements = childResult.elements;
-                        index = childResult.nextIndex;
-
-                        elements.push(
-                          <ProgressTreeNode
-                            key={section.id}
-                            initialProgress={sectionProgress}
-                            label={section.attributes?.name}
-                            data={
-                              <Box>
-                                <Typography variant="body2">
-                                  {`Passages: ${totalPassages}`}
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  color="textSecondary"
-                                  sx={{ fontSize: '0.8rem' }}
-                                >
-                                  {`Complete: ${completedCount} | In Progress: ${inProgressCount} | Not Started: ${
-                                    totalPassages -
-                                    completedCount -
-                                    inProgressCount
-                                  }`}
-                                </Typography>
-                              </Box>
-                            }
-                            initialExpanded={true}
-                            autoProgress={true}
-                          >
-                            {/* Render child sections first */}
-                            {childElements}
-
-                            {/* Then render passages for this section with hierarchical structure based on sequencenum */}
-                            {(() => {
-                              // Group passages by chapters and organize by sequencenum
-                              const renderPassageTree = () => {
-                                // Sort passages by sequencenum
-                                const sortedPassages = [
-                                  ...sectionPassages,
-                                ].sort(
-                                  (a, b) =>
-                                    (a.attributes?.sequencenum || 0) -
-                                    (b.attributes?.sequencenum || 0)
-                                );
-
-                                const passagesElement: JSX.Element[] = [];
-
-                                // Group passages by chapter headers (passages with decimal sequencenum)
-                                // and passages that follow them
-                                const chapterGroups: {
-                                  chapterHeader?: Passage;
-                                  passages: Passage[];
-                                }[] = [];
-
-                                let currentGroup: {
-                                  chapterHeader?: Passage;
-                                  passages: Passage[];
-                                } = { passages: [] };
-
-                                // Process each passage and organize into chapter groups
-                                sortedPassages.forEach((passage) => {
-                                  const seqNum =
-                                    passage.attributes?.sequencenum || 0;
-                                  // Check if it's a chapter header (has decimal sequence number)
-                                  const isChapterHeader =
-                                    String(seqNum).includes('.');
-
-                                  if (isChapterHeader) {
-                                    // Start a new group with this chapter header
-                                    if (
-                                      currentGroup.passages.length > 0 ||
-                                      currentGroup.chapterHeader
-                                    ) {
-                                      chapterGroups.push(currentGroup);
-                                    }
-                                    currentGroup = {
-                                      chapterHeader: passage,
-                                      passages: [],
-                                    };
-                                  } else {
-                                    // Add regular passage to current group
-                                    currentGroup.passages.push(passage);
-                                  }
-                                });
-
-                                // Add the last group if it has passages
-                                if (
-                                  currentGroup.passages.length > 0 ||
-                                  currentGroup.chapterHeader
-                                ) {
-                                  chapterGroups.push(currentGroup);
-                                }
-
-                                // Render each group as a nested structure
-                                chapterGroups.forEach((group) => {
-                                  if (group.chapterHeader) {
-                                    // This group has a chapter header, create a parent node
-                                    const headerPassage = group.chapterHeader;
-                                    const chapterReference =
-                                      headerPassage.attributes?.reference || '';
-                                    const chapterTitle =
-                                      headerPassage.attributes?.title || '';
-
-                                    // Calculate completion for the entire chapter
-                                    const completedChapterPassages =
-                                      group.passages.filter((passage) => {
-                                        const passageData =
-                                          passage.attributes?.stepComplete;
-                                        const passageSteps = passageData
-                                          ? JSON.parse(passageData)
-                                          : undefined;
-                                        const passageStep =
-                                          passageSteps?.completed?.find(
-                                            (stepItem: any) =>
-                                              stepItem.stepid ===
-                                              selectedWorkflowStep?.keys
-                                                ?.remoteId
-                                          );
-                                        return passageStep?.complete === true;
-                                      });
-
-                                    const chapterProgress =
-                                      group.passages.length > 0
-                                        ? Math.round(
-                                            (completedChapterPassages.length /
-                                              group.passages.length) *
-                                              100
-                                          )
-                                        : 0;
-
-                                    // Track in-progress passages for the chapter
-                                    const inProgressPassages =
-                                      group.passages.filter((passage) => {
-                                        const passageData =
-                                          passage.attributes?.stepComplete;
-                                        const passageSteps = passageData
-                                          ? JSON.parse(passageData)
-                                          : undefined;
-                                        const passageStep =
-                                          passageSteps?.completed?.find(
-                                            (stepItem: any) =>
-                                              stepItem.stepid ===
-                                              selectedWorkflowStep?.keys
-                                                ?.remoteId
-                                          );
-                                        return (
-                                          passageStep &&
-                                          !passageStep.complete &&
-                                          (passageStep.progress || 0) > 0
-                                        );
-                                      });
-
-                                    // Calculate additional progress stats
-                                    const totalPassages = group.passages.length;
-                                    const completedCount =
-                                      completedChapterPassages.length;
-                                    const inProgressCount =
-                                      inProgressPassages.length;
-
-                                    passagesElement.push(
-                                      <ProgressTreeNode
-                                        key={headerPassage.id}
-                                        initialProgress={chapterProgress}
-                                        label={chapterTitle}
-                                        data={
-                                          <Box>
-                                            <Typography variant="body2">
-                                              {`${chapterReference} - Passages: ${totalPassages}`}
-                                            </Typography>
-                                            <Typography
-                                              variant="body2"
-                                              color="textSecondary"
-                                              sx={{ fontSize: '0.8rem' }}
-                                            >
-                                              {`Complete: ${completedCount} | In Progress: ${inProgressCount} | Not Started: ${
-                                                totalPassages -
-                                                completedCount -
-                                                inProgressCount
-                                              }`}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        initialExpanded={true}
-                                        autoProgress={true}
-                                      >
-                                        {group.passages.map((passage) => {
-                                          const passageData =
-                                            passage.attributes?.stepComplete;
-                                          const passageSteps = passageData
-                                            ? JSON.parse(passageData)
-                                            : undefined;
-                                          const passageStep =
-                                            passageSteps?.completed?.find(
-                                              (stepItem: any) =>
-                                                stepItem.stepid ===
-                                                selectedWorkflowStep?.keys
-                                                  ?.remoteId
-                                            );
-                                          const passageProgress = passageStep
-                                            ? passageStep.complete
-                                              ? 100
-                                              : passageStep.progress || 0
-                                            : 0;
-
-                                          return (
-                                            <ProgressTreeNode
-                                              key={passage.id}
-                                              initialProgress={passageProgress}
-                                              label={`${
-                                                passage.attributes?.reference ||
-                                                passage.id
-                                              } (${
-                                                passage.attributes?.sequencenum
-                                              })`}
-                                              data={
-                                                <Typography variant="body2">
-                                                  {`Progress: ${passageProgress}%`}
-                                                </Typography>
-                                              }
-                                            >
-                                              <Typography variant="body2">
-                                                {`Passage ID: ${passage.id}`}
-                                              </Typography>
-                                              <Typography variant="body2">
-                                                {`Sequence: ${passage.attributes?.sequencenum}`}
-                                              </Typography>
-                                              <Typography variant="body2">
-                                                {`Passage Step: ${
-                                                  passageStep?.stepid || 'None'
-                                                }`}
-                                              </Typography>
-                                            </ProgressTreeNode>
-                                          );
-                                        })}
-                                      </ProgressTreeNode>
-                                    );
-                                  } else {
-                                    // Group with no header, render passages directly
-                                    group.passages.forEach((passage) => {
-                                      const passageData =
-                                        passage.attributes?.stepComplete;
-                                      const passageSteps = passageData
-                                        ? JSON.parse(passageData)
-                                        : undefined;
-                                      const passageStep =
-                                        passageSteps?.completed?.find(
-                                          (stepItem: any) =>
-                                            stepItem.stepid ===
-                                            selectedWorkflowStep?.keys?.remoteId
-                                        );
-                                      const passageProgress = passageStep
-                                        ? passageStep.complete
-                                          ? 100
-                                          : passageStep.progress || 0
-                                        : 0;
-
-                                      passagesElement.push(
-                                        <ProgressTreeNode
-                                          key={passage.id}
-                                          initialProgress={passageProgress}
-                                          label={`${
-                                            passage.attributes?.reference ||
-                                            passage.id
-                                          } (${
-                                            passage.attributes?.sequencenum
-                                          })`}
-                                          data={
-                                            <Box>
-                                              <Typography variant="body2">
-                                                {`Progress: ${passageProgress}%`}
-                                              </Typography>
-                                              <Typography
-                                                variant="body2"
-                                                color="textSecondary"
-                                                sx={{ fontSize: '0.8rem' }}
-                                              >
-                                                {`Status: ${
-                                                  passageProgress === 100
-                                                    ? 'Complete'
-                                                    : passageProgress > 0
-                                                    ? 'In Progress'
-                                                    : 'Not Started'
-                                                }`}
-                                              </Typography>
-                                            </Box>
-                                          }
-                                        >
-                                          <Typography variant="body2">
-                                            {`Passage ID: ${passage.id}`}
-                                          </Typography>
-                                          <Typography variant="body2">
-                                            {`Sequence: ${passage.attributes?.sequencenum}`}
-                                          </Typography>
-                                          <Typography variant="body2">
-                                            {`Passage Step: ${
-                                              passageStep?.stepid || 'None'
-                                            }`}
-                                          </Typography>
-                                        </ProgressTreeNode>
-                                      );
-                                    });
-                                  }
-                                });
-
-                                return passagesElement;
-                              };
-
-                              return renderPassageTree();
-                            })()}
-                          </ProgressTreeNode>
-                        );
-                      } else {
-                        // If we encounter a section at a lower level (higher number), skip it
-                        // as it should be handled by a parent section
-                        index++;
-                      }
-                    }
-
-                    return { elements, nextIndex: index };
-                  };
-
-                  return renderSectionTree(1, 0).elements;
-                };
-
-                return buildSectionHierarchy(selectedSections);
-              })()}
+            {selectedWorkflowStep && (
+              <Box
+                sx={{
+                  my: 2,
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="h6">
+                  Overall Progress: {overallProgress.percentage}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={overallProgress.percentage}
+                  sx={{ my: 1, height: 10 }}
+                />
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    mt: 1,
+                  }}
+                >
+                  <Typography variant="body2" color="primary">
+                    Complete: {overallProgress.completed} (
+                    {overallProgress.total > 0
+                      ? Math.round(
+                          (overallProgress.completed / overallProgress.total) *
+                            100
+                        )
+                      : 0}
+                    %)
+                  </Typography>
+                  <Typography variant="body2" color="secondary">
+                    In Progress: {overallProgress.inProgress} (
+                    {overallProgress.total > 0
+                      ? Math.round(
+                          (overallProgress.inProgress / overallProgress.total) *
+                            100
+                        )
+                      : 0}
+                    %)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Not Started: {overallProgress.notStarted} (
+                    {overallProgress.total > 0
+                      ? Math.round(
+                          (overallProgress.notStarted / overallProgress.total) *
+                            100
+                        )
+                      : 0}
+                    %)
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+            {/* Render tree structure using TreeBuilder */}
+            {selectedWorkflowStep && treeData.map(renderTreeNode)}
             <PriButton
               variant="contained"
               onClick={() => {
