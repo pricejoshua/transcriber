@@ -18,6 +18,7 @@ import {
   SharedResourceD,
   WorkflowStep,
   Bible,
+  BibleD,
 } from '../model';
 import {
   Box,
@@ -68,6 +69,7 @@ export function SimpleReportsTab(props: IProps) {
   const mediafiles = useOrbitData<MediaFile[]>('mediafile');
   const discussions = useOrbitData<Discussion[]>('discussion');
   const groupmemberships = useOrbitData<GroupMembership[]>('groupmembership');
+  const bibles = useOrbitData<BibleD[]>('bible');
   const graphics = useOrbitData<GraphicD[]>('graphic');
   const workflowSteps = useOrbitData<WorkflowStep[]>('workflowstep');
   const orgWorkflowSteps = useOrbitData<OrgWorkflowStep[]>('orgworkflowstep');
@@ -78,6 +80,8 @@ export function SimpleReportsTab(props: IProps) {
 
   const [plan, setPlan] = useGlobal('plan');
   const [isScripture, setScripture] = useState(false);
+
+  // console.log('bibles', bibles);
 
   enum WorkflowType {
     Draft = 'draft',
@@ -100,12 +104,15 @@ export function SimpleReportsTab(props: IProps) {
   const [selectedPassages, setSelectedPassages] = useState<Passage[]>([]);
   const [workflowPassages, setWorkflowPassages] = useState<Passage[]>([]);
   const [selectedGraphics, setSelectedGraphics] = useState<GraphicD[]>([]);
+
+  const [hasBible, setHasBible] = useState<boolean>(false);
   const [org] = useGlobal('organization');
 
   const [bible, setBible] = useState<Bible | undefined>(undefined);
 
+  const { getOrgBible } = useBible();
   const { projectPlans } = props;
-  console.log(props);
+  // console.log('props', props);
 
   useEffect(() => {
     if (projectPlans.length === 1) {
@@ -152,6 +159,20 @@ export function SimpleReportsTab(props: IProps) {
     WorkflowStep | undefined
   >(undefined);
 
+  useEffect(() => {
+    if (org) {
+      // console.log('Organization changed:', org);
+      var bible = getOrgBible(org);
+      setHasBible((bible?.attributes.bibleName ?? '') !== '');
+      setBible(bible);
+      // console.log('Bible for org:', bible);
+    } else {
+      // console.log('no org');
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org]);
+
   // Initialize selectedWorkflowSteps with draft workflow steps
   useEffect(() => {
     if (draftWorkflowSteps.length > 0) {
@@ -188,7 +209,7 @@ export function SimpleReportsTab(props: IProps) {
     });
     setSelectedPassages(selectedPassages);
 
-    const selectedGraphics = graphics.filter((graphic) => {
+    const tempSelectedGraphics = graphics.filter((graphic) => {
       if (graphic.attributes?.resourceType === 'section') {
         // graphic.attributes?.resourceId is in the selected sections ID
         return selectedSections.some(
@@ -199,10 +220,8 @@ export function SimpleReportsTab(props: IProps) {
       return false;
     });
 
-    setSelectedGraphics(selectedGraphics);
-
-
-
+    setSelectedGraphics(tempSelectedGraphics);
+    console.log('Selected Graphics', tempSelectedGraphics);
   }, []);
 
   const planId = projectPlans[0]?.id;
@@ -318,11 +337,11 @@ export function SimpleReportsTab(props: IProps) {
         return section.attributes?.name || `Section ${section.id}`;
       } else if (nodeType === 'chapter') {
         const passage = data as Passage;
-        console.log('Chapter Passage', passage);
+        // console.log('Chapter Passage', passage);
         return passage.attributes?.title || `Chapter: ${passage.id}`;
       } else {
         const passage = data as Passage;
-        console.log('Passage', passage);
+        // console.log('Passage', passage);
         return `${passage.attributes?.reference || passage.id}`;
       }
     };
@@ -370,6 +389,59 @@ export function SimpleReportsTab(props: IProps) {
       }
     };
 
+    const getStatusItems = () => {
+      const statusItems = [];
+      if (nodeType === 'chapter') {
+        const passage = data as Passage;
+        // if passage is chapter, check for graphics
+        const isChapter = String(passage.attributes?.sequencenum).indexOf('.') !== -1;
+        if (isChapter) {
+          const chapterGraphics = selectedGraphics.filter((graphic) => {
+            return (
+              String(graphic.attributes?.resourceId) ===
+              String(passage.keys?.remoteId)
+            );
+          });
+          if (chapterGraphics.length > 0) {
+            statusItems.push({
+              label: 'Has Graphics',
+              completed: true,
+            });
+          } else {
+            statusItems.push({
+              label: 'No Graphics',
+              completed: false,
+            });
+          }
+        }
+
+      } else if (nodeType === 'section') {
+        const section = data as Section;
+        console.log('Section Data', section);
+        const sectionRemoteId = section.keys?.remoteId;
+        const sectionHasGraphics = selectedGraphics.some(
+          (graphic) => String(graphic.attributes?.resourceId) === sectionRemoteId
+        );
+        if (sectionHasGraphics) {
+          statusItems.push({
+            label: 'Has Graphics',
+            completed: true,
+          });
+        } else {
+          statusItems.push({
+            label: 'No Graphics',
+            completed: false,
+          });
+        }
+      }
+
+      console.log('Status Items', statusItems);
+      return statusItems;
+    }
+
+    console.log('Rendering node:', node.id, 'Type:', nodeType);
+    console.log('status', getStatusItems());
+
     return (
       <ProgressTreeNode
         key={node.id}
@@ -378,6 +450,7 @@ export function SimpleReportsTab(props: IProps) {
         data={getProgressData()}
         initialExpanded={false}
         autoProgress={nodeType !== 'passage'}
+        statusItems={getStatusItems()}
       >
         {children.map((child: TreeNodeType) => renderTreeNode(child))}
       </ProgressTreeNode>
@@ -385,129 +458,118 @@ export function SimpleReportsTab(props: IProps) {
   };
 
   const getReport = (): JSX.Element | null => {
-    switch (reportTab) {
-      case 0:
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', width: '80%' }}>
-            <Select
-              labelId="select-workflow-step-label"
-              id="select-workflow-step"
-              value={selectedWorkflowStep?.keys?.remoteId || ''}
-              label={'Select Workflow Step'}
-              displayEmpty
-              renderValue={
-                selectedWorkflowStep
-                  ? undefined
-                  : () => 'Select a workflow step'
-              }
-              onChange={(event) => {
-                const selectedId = event.target.value;
-                const selectedStep = selectedWorkflowSteps.find(
-                  (step) => step.keys?.remoteId === selectedId
-                );
-                handleWorkflowStepChange(selectedStep);
-              }}
-            >
-              {selectedWorkflowSteps.map((step) => (
-                <MenuItem key={step.keys?.remoteId} value={step.keys?.remoteId}>
-                  {step.attributes?.name}
-                </MenuItem>
-              ))}
-            </Select>
-            <Typography variant="h6">{'General Report'}</Typography>
-            <Typography variant="body1">
-              {`Plan ID: ${planId}`}
-              <br />
-              {' passage count: ' + selectedPassages.length}
-            </Typography>
-            <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', width: '80%' }}>
+        <Select
+          sx={{ mt: 4 }}
+          labelId="select-workflow-step-label"
+          id="select-workflow-step"
+          value={selectedWorkflowStep?.keys?.remoteId || ''}
+          label={'Select Workflow Step'}
+          displayEmpty
+          renderValue={
+            selectedWorkflowStep ? undefined : () => 'Select a workflow step'
+          }
+          onChange={(event) => {
+            const selectedId = event.target.value;
+            const selectedStep = selectedWorkflowSteps.find(
+              (step) => step.keys?.remoteId === selectedId
+            );
+            handleWorkflowStepChange(selectedStep);
+          }}
+        >
+          {selectedWorkflowSteps.map((step) => (
+            <MenuItem key={step.keys?.remoteId} value={step.keys?.remoteId}>
+              {step.attributes?.name}
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography variant="h6">{'General Report'}</Typography>
+        <Typography variant="body1">
+          {`Plan ID: ${planId}`}
+          <br />
+          {' passage count: ' + selectedPassages.length}
+        </Typography>
+        <Typography variant="body2">{`Plan Name: ${planName}`}</Typography>
 
-            {/* Overall progress stats */}
-            {selectedWorkflowStep && (
-              <Box
-                sx={{
-                  my: 2,
-                  p: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                }}
-              >
-                <Typography variant="h6">
-                  Overall Progress: {overallProgress.percentage}%
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={overallProgress.percentage}
-                  sx={{ my: 1, height: 10 }}
-                />
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    mt: 1,
-                  }}
-                >
-                  <Typography variant="body2" color="primary">
-                    Complete: {overallProgress.completed} (
-                    {overallProgress.total > 0
-                      ? Math.round(
-                          (overallProgress.completed / overallProgress.total) *
-                            100
-                        )
-                      : 0}
-                    %)
-                  </Typography>
-                  <Typography variant="body2" color="secondary">
-                    In Progress: {overallProgress.inProgress} (
-                    {overallProgress.total > 0
-                      ? Math.round(
-                          (overallProgress.inProgress / overallProgress.total) *
-                            100
-                        )
-                      : 0}
-                    %)
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Not Started: {overallProgress.notStarted} (
-                    {overallProgress.total > 0
-                      ? Math.round(
-                          (overallProgress.notStarted / overallProgress.total) *
-                            100
-                        )
-                      : 0}
-                    %)
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-            {/* Render tree structure using TreeBuilder */}
-            {selectedWorkflowStep && treeData.map(renderTreeNode)}
-            <PriButton
-              variant="contained"
-              onClick={() => {
-                showMessage('General Report button clicked');
+        {/* Overall progress stats */}
+        {selectedWorkflowStep && (
+          <Box
+            sx={{
+              my: 2,
+              p: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="h6">
+              Overall Progress: {overallProgress.percentage}%
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={overallProgress.percentage}
+              sx={{ my: 1, height: 10 }}
+            />
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                mt: 1,
               }}
-              sx={{ mt: 2 }}
             >
-              {'Generate General Report'}
-            </PriButton>
-            <AltButton
-              variant="outlined"
-              onClick={() => {
-                window.location.reload();
-              }}
-              sx={{ mt: 2 }}
-            >
-              {'Cancel'}
-            </AltButton>
+              <Typography variant="body2" color="primary">
+                Complete: {overallProgress.completed} (
+                {overallProgress.total > 0
+                  ? Math.round(
+                      (overallProgress.completed / overallProgress.total) * 100
+                    )
+                  : 0}
+                %)
+              </Typography>
+              <Typography variant="body2" color="secondary">
+                In Progress: {overallProgress.inProgress} (
+                {overallProgress.total > 0
+                  ? Math.round(
+                      (overallProgress.inProgress / overallProgress.total) * 100
+                    )
+                  : 0}
+                %)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Not Started: {overallProgress.notStarted} (
+                {overallProgress.total > 0
+                  ? Math.round(
+                      (overallProgress.notStarted / overallProgress.total) * 100
+                    )
+                  : 0}
+                %)
+              </Typography>
+            </Box>
           </Box>
-        );
-      case 1:
-        return <Typography variant="body1">{'Publish Readiness'}</Typography>;
-      default:
-        return null;
-    }
+        )}
+        {/* Render tree structure using TreeBuilder */}
+        {selectedWorkflowStep && treeData.map(renderTreeNode)}
+        <PriButton
+          variant="contained"
+          onClick={() => {
+            showMessage('General Report button clicked');
+          }}
+          sx={{ mt: 2 }}
+        >
+          {'Generate General Report'}
+        </PriButton>
+        <AltButton
+          variant="outlined"
+          onClick={() => {
+            window.location.reload();
+          }}
+          sx={{ mt: 2 }}
+        >
+          {'Cancel'}
+        </AltButton>
+      </Box>
+    );
   };
 
   return (
@@ -515,23 +577,7 @@ export function SimpleReportsTab(props: IProps) {
       id="SimpleReportsTab"
       sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
     >
-      <TabAppBar position="fixed" color="default">
-        <TabActions>
-          <GrowingSpacer />
-          <FilterButton filter={filter} onFilter={handleFilter} />
-        </TabActions>
-      </TabAppBar>
       <PaddedBox>
-        <Tabs
-          value={reportTab}
-          onChange={handleReportTabChange}
-          aria-label="report-tabs"
-          sx={{ mb: 2 }}
-        >
-          <Tab label={'General Report'} id="report-tab-0" />
-          {canPublish && <Tab label={'Publish Readiness'} id="report-tab-1" />}
-        </Tabs>
-
         <Box>{getReport()}</Box>
       </PaddedBox>
     </Box>

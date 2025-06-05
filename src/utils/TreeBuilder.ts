@@ -43,6 +43,7 @@ export interface TreeBuilderConfig {
   groupByChapters?: boolean;
   calculateProgress?: boolean;
   selectedWorkflowStep?: any;
+  rootNodeConfig?: BaseModel;
 }
 
 /**
@@ -76,14 +77,43 @@ export class TreeBuilder {
     const sortedSections = this.sortSections(planSections);
 
     // Build the hierarchical tree
-    const rootNodes = this.buildSectionHierarchy(sortedSections, planPassages);
+    const sectionNodes = this.buildSectionHierarchy(
+      sortedSections,
+      planPassages
+    );
+
+    // If rootNodeConfig is provided, create a root node containing all sections
+    if (this.config.rootNodeConfig && this.config.rootNodeConfig.id) {
+      const rootNode: ProgressTreeNode = {
+        id: this.config.rootNodeConfig.id,
+        data: this.config.rootNodeConfig,
+        children: sectionNodes,
+        level: 0,
+        sequenceNum: 0,
+        nodeType: 'section',
+        progress: this.createEmptyProgress(),
+      };
+
+      // Set parent reference for all child nodes
+      sectionNodes.forEach((child) => {
+        child.parent = rootNode;
+        this.updateChildLevels(child, 1);
+      });
+
+      // Calculate progress if requested
+      if (this.config.calculateProgress) {
+        this.calculateTreeProgress([rootNode]);
+      }
+
+      return [rootNode];
+    }
 
     // Calculate progress if requested
     if (this.config.calculateProgress) {
-      this.calculateTreeProgress(rootNodes);
+      this.calculateTreeProgress(sectionNodes);
     }
 
-    return rootNodes;
+    return sectionNodes;
   }
 
   /**
@@ -139,7 +169,12 @@ export class TreeBuilder {
     let index = 0;
 
     while (index < sections.length) {
-      const result = this.buildSectionSubtree(sections, passages, index, 1);
+      const result = this.buildSectionSubtree(
+        sections,
+        passages,
+        index,
+        1
+      );
       if (result.node) {
         rootNodes.push(result.node);
       }
@@ -511,5 +546,36 @@ export class TreeBuilder {
       }
     }
     return null;
+  }
+
+  /**
+   * Get the root node if one was configured
+   */
+  static getRootNode(nodes: ProgressTreeNode[]): ProgressTreeNode | null {
+    if (nodes.length === 1 && nodes[0].level === 0) {
+      return nodes[0];
+    }
+    return null;
+  }
+
+  /**
+   * Get the actual section nodes (excluding the root node if present)
+   */
+  static getSectionNodes(nodes: ProgressTreeNode[]): ProgressTreeNode[] {
+    const rootNode = TreeBuilder.getRootNode(nodes);
+    if (rootNode) {
+      return rootNode.children;
+    }
+    return nodes;
+  }
+
+  /**
+   * Update levels of child nodes recursively when a root node is added
+   */
+  private updateChildLevels(node: ProgressTreeNode, newLevel: number): void {
+    node.level = newLevel;
+    node.children.forEach((child) => {
+      this.updateChildLevels(child, newLevel + 1);
+    });
   }
 }
