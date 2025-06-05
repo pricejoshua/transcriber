@@ -113,6 +113,8 @@ const initialState = {
 			"duplicateName": "Duplicate Permission Scheme name",
 			"duplicateName2": "Duplicate Assignment Scheme name",
 			"modifySections": "{0} {1} are selelected but modifying the permissions will change all {2} {3} with this permission scheme",
+			"noAssignment": "Unassigned",
+			"noRestriction": "No Restriction",
 			"role": "Role",
 			"schemeName": "Permission Scheme Name",
 			"schemeName2": "Assignment Scheme Name",
@@ -329,6 +331,7 @@ const initialState = {
 			"confirmDelete": "Delete this discussion and all comments?",
 			"locate": "Locate discussion subject in audio recording",
 			"move": "Select step for discussion",
+			"none": "None of the above",
 			"onlyAdmin": "Only Admins",
 			"or": "or",
 			"playOrStop": "Play or Stop",
@@ -606,6 +609,7 @@ const initialState = {
 			"join": "Join",
 			"member": "Member",
 			"newInviteTask": "Enter the email address of the person to invite.",
+			"newInviteTask2": "Separate multiple email addresses with a semicolon (';').",
 			"noProjects": "This team has no audio projects.",
 			"organization": "Team",
 			"questions": "Questions? Contact",
@@ -770,6 +774,8 @@ const initialState = {
 			"cancelling": "Canceling with {0} of {1} completed.",
 			"choosePassage": "Choose Passage",
 			"cloudSync": "Cloud Sync",
+			"confirmChange": "Confirm Change",
+			"confirmValue": "Replace the current rights holder with {0}?",
 			"date": "Date",
 			"delete": "Delete",
 			"deleteConfirm": "Delete {0}? Are you sure?",
@@ -1225,7 +1231,7 @@ const initialState = {
 	}),
 	"publishTo": new LocalizedStrings({
 		"en": {
-			"Internalization": "Internalization Resources for other projects",
+			"Internalization": "Internalization Resources for other APM projects",
 		}
 	}),
 	"resource": new LocalizedStrings({
@@ -1386,6 +1392,7 @@ const initialState = {
 			"uploadMediaPlural": "Upload Audio",
 			"uploadMediaSingular": "Upload Audio",
 			"uploadRights": "Upload Rights File",
+			"uploadSuccess": "Upload Successful",
 			"user": "Team Member",
 			"versionHistory": "Versions",
 			"wait": "Please wait for action to finish.",

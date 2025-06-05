@@ -569,6 +569,20 @@
                <context context-type="sourcefile">AssignSection.tsx</context>
             </context-group>
          </trans-unit>
+         <trans-unit id="assignSection.noAssignment">
+            <source>Unassigned</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">AssignSection.tsx</context>
+            </context-group>
+         </trans-unit>
+         <trans-unit id="assignSection.noRestriction">
+            <source>No Restriction</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">AssignSection.tsx</context>
+            </context-group>
+         </trans-unit>
          <trans-unit id="assignSection.role">
             <source>Role</source>
             <target/>
@@ -1774,6 +1788,13 @@
       			<context context-type="sourcefile">DiscussionCard.tsx</context>
       		</context-group>
       	</trans-unit>
+         <trans-unit id="discussionCard.none">
+            <source>None of the above</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">DiscussionCard.tsx</context>
+            </context-group>
+         </trans-unit>
          <trans-unit id="discussionCard.onlyAdmin">
             <source>Only Admins</source>
             <target/>
@@ -3350,6 +3371,13 @@
                <context context-type="sourcefile">Invite.tsx</context>
             </context-group>
          </trans-unit>
+         <trans-unit id="invite.newInviteTask2">
+            <source>Separate multiple email addresses with a semicolon (';').</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">Invite.tsx</context>
+            </context-group>
+         </trans-unit>
          <trans-unit id="invite.noProjects">
             <source>This team has no audio projects.</source>
             <target/>
@@ -4358,6 +4386,20 @@
       			<context context-type="sourcefile">MediaTab.tsx</context>
       		</context-group>
       	</trans-unit>
+         <trans-unit id="mediaTab.confirmChange">
+            <source>Confirm Change</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">MediaTab.tsx</context>
+            </context-group>
+         </trans-unit>
+         <trans-unit id="mediaTab.confirmValue">
+            <source>Replace the current rights holder with {0}?</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">MediaTab.tsx</context>
+            </context-group>
+         </trans-unit>
          <trans-unit id="mediaTab.date">
             <source>Date</source>
             <target/>
@@ -6929,7 +6971,7 @@
             </context-group>
          </trans-unit>
          <trans-unit id="publishTo.Internalization">
-            <source>Internalization Resources for other projects</source>
+            <source>Internalization Resources for other APM projects</source>
             <target/>
             <context-group>
                <context context-type="sourcefile">ConfirmPublishDialog.tsx</context>
@@ -7832,6 +7874,13 @@
       			<context context-type="sourcefile">PlanSheet.tsx</context>
       		</context-group>
       	</trans-unit>
+         <trans-unit id="shared.uploadSuccess">
+            <source>Upload Successful</source>
+            <target/>
+            <context-group>
+               <context context-type="sourcefile">PlanSheet.tsx</context>
+            </context-group>
+         </trans-unit>
       	<trans-unit id="shared.user">
             <source>Team Member</source>
             <target/>

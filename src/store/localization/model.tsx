@@ -101,6 +101,8 @@ export interface IAssignSectionStrings extends Localize.LocalizedStringsMethods 
     "duplicateName": string;
     "duplicateName2": string;
     "modifySections": string;
+    "noAssignment": string;
+    "noRestriction": string;
     "role": string;
     "schemeName": string;
     "schemeName2": string;
@@ -306,6 +308,7 @@ export interface IDiscussionCardStrings extends Localize.LocalizedStringsMethods
     "confirmDelete": string;
     "locate": string;
     "move": string;
+    "none": string;
     "onlyAdmin": string;
     "or": string;
     "playOrStop": string;
@@ -570,6 +573,7 @@ export interface IInviteStrings extends Localize.LocalizedStringsMethods {
     "join": string;
     "member": string;
     "newInviteTask": string;
+    "newInviteTask2": string;
     "noProjects": string;
     "organization": string;
     "questions": string;
@@ -729,6 +733,8 @@ export interface IMediaTabStrings extends Localize.LocalizedStringsMethods {
     "cancelling": string;
     "choosePassage": string;
     "cloudSync": string;
+    "confirmChange": string;
+    "confirmValue": string;
     "date": string;
     "delete": string;
     "deleteConfirm": string;
@@ -1315,6 +1321,7 @@ export interface ISharedStrings extends Localize.LocalizedStringsMethods {
     "uploadMediaPlural": string;
     "uploadMediaSingular": string;
     "uploadRights": string;
+    "uploadSuccess": string;
     "user": string;
     "versionHistory": string;
     "wait": string;

@@ -494,15 +494,17 @@ export function ScriptureTable(props: IProps) {
   const isPassageOrNote = (ws: ISheet[], i: number) =>
     [PassageTypeEnum.PASSAGE, PassageTypeEnum.NOTE].includes(ws[i].passageType);
 
-  const updatePassageRef = (id: string, val: string) => {
+  const updatePassageRef = (id: string, val: string, sr: SharedResourceD) => {
     const index = sheet.findIndex((s) => s?.passage?.id === id);
     if (index < 0) return;
     const passageRow = { ...sheet[index] };
-    if (passageRow.reference === val) return;
+    if (passageRow.reference === val && passageRow.sharedResource?.id === sr.id)
+      return;
     if (updateRef.current) return;
     setUpdate(true);
     passageRow.reference = val;
     passageRow.passageUpdated = currentDateTime();
+    passageRow.sharedResource = sr;
     setSheet(updateRowAt(sheet, passageRow, index));
     setUpdate(false);
     setChanged(true);
@@ -1077,7 +1079,7 @@ export function ScriptureTable(props: IProps) {
     });
   };
 
-  const handleUploadGraphicVisible = (v: boolean) => {
+  const graphicsClosed = (v: boolean) => {
     setUploadType(v ? UploadType.Graphic : undefined);
     setUploadGraphicVisible(v);
   };
@@ -1114,25 +1116,44 @@ export function ScriptureTable(props: IProps) {
       ws?.kind === IwsKind.Section
         ? parseInt(secRec?.keys?.remoteId ?? '0')
         : parseInt(ws?.passage?.keys?.remoteId ?? '0');
-    const infoData: IGraphicInfo = { [Rights]: ws?.graphicRights };
-    images.forEach((image) => {
-      infoData[image.dimension.toString()] = image;
-    });
-    const info = JSON.stringify(infoData);
     const graphicRec = graphics.find(
       (g) =>
         g.attributes.resourceType === resourceType &&
         g.attributes.resourceId === resourceId
     );
-    if (graphicRec) {
-      await graphicUpdate({
-        ...graphicRec,
-        attributes: { ...graphicRec.attributes, info },
+    const curData = JSON.parse(
+      graphicRec?.attributes?.info || '{}'
+    ) as IGraphicInfo;
+    if (curData[Rights] !== ws?.graphicRights || images.length > 0) {
+      showMessage(ts.saving);
+      const infoData: IGraphicInfo = {
+        ...curData,
+        [Rights]: ws?.graphicRights,
+      };
+      images.forEach((image) => {
+        infoData[image.dimension.toString()] = image;
       });
-    } else {
-      await graphicCreate({ resourceType, resourceId, info });
+      const info = JSON.stringify(infoData);
+      if (graphicRec) {
+        await graphicUpdate({
+          ...graphicRec,
+          attributes: { ...graphicRec.attributes, info },
+        });
+      } else {
+        await graphicCreate({ resourceType, resourceId, info });
+      }
     }
     setUploadType(undefined);
+  };
+
+  const handleUploadGraphicVisible = (v: boolean) => {
+    if (!v && Boolean(uploadType)) {
+      afterConvert([]).then(() => {
+        graphicsClosed(false);
+      });
+    } else {
+      graphicsClosed(v);
+    }
   };
 
   const handleAudacityImport = (i: number, list: File[]) => {
@@ -1482,7 +1503,7 @@ export function ScriptureTable(props: IProps) {
       sheetRef.current.forEach((s, index) => {
         if (isSectionRow(s)) {
           if (sectionIndex >= 0) {
-            if (!hasOnePassage && filterState.assignedToMe) {
+            if (!hasOnePassage && filterState.assignedToMe && !flat) {
               newWork[sectionIndex].filtered = true;
             }
           }
@@ -1552,7 +1573,7 @@ export function ScriptureTable(props: IProps) {
       setUpdate(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgSteps, filterState, doneStepId, hidePublishing]);
+  }, [orgSteps, filterState, doneStepId, hidePublishing, flat]);
 
   const firstBook = useMemo(
     () =>

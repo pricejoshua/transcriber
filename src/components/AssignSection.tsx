@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useContext } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 import { shallowEqual } from 'react-redux';
 import {
-  Section,
   IAssignSectionStrings,
   ISharedStrings,
   OrgWorkflowStepD,
@@ -14,6 +13,7 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  LinearProgress,
 } from '@mui/material';
 import {
   orgDefaultPermissions,
@@ -56,6 +56,7 @@ interface IProps {
   closeMethod?: (cancel?: boolean) => void;
   refresh?: () => void;
   readOnly?: boolean;
+  inChange?: boolean; // if true, the dialog is opened from a change request
 }
 
 function AssignSection(props: IProps) {
@@ -70,13 +71,14 @@ function AssignSection(props: IProps) {
   const steps = useOrbitData<OrganizationSchemeStepD[]>(
     'organizationschemestep'
   );
-  const allSections = useOrbitData<Section[]>('section');
+  const allSections = useOrbitData<SectionD[]>('section');
   const [organization] = useGlobal('organization');
   const [memory] = useGlobal('memory');
   const [coordinator] = useGlobal('coordinator');
   const remote = coordinator?.getSource('remote') as JSONAPISource;
   const backup = coordinator?.getSource('backup') as IndexedDBSource;
   const [errorReporter] = useGlobal('errorReporter');
+  const [busy, setBusy] = useGlobal('remoteBusy');
   const [user] = useGlobal('user');
   const [org] = useGlobal('organization');
   const [open, setOpen] = useState(visible);
@@ -176,7 +178,7 @@ function AssignSection(props: IProps) {
         );
       }
       for (let [step, value] of assignArr) {
-        if (!step || !value) continue;
+        if (!step) continue;
         const [actorType, actorId] = value.split(':');
         const relateType = actorType === 'u' ? 'user' : 'group';
         let t = new RecordTransformBuilder();
@@ -270,6 +272,8 @@ function AssignSection(props: IProps) {
   };
 
   const doAssign = async (schemeId: string) => {
+    if (!sections.some((s) => related(s, 'organizationScheme') !== schemeId))
+      return;
     var ids = sections.map(
       (s) => remoteId('section', s.id, memory.keyMap as RecordKeyMap) as string
     );
@@ -303,6 +307,19 @@ function AssignSection(props: IProps) {
 
   const confirmDelete = async () => {
     if (scheme) {
+      //remove scheme assignment on sections
+      await memory.update((t) =>
+        impactedSections.map((s) =>
+          t.replaceRelatedRecord(s, 'organizationScheme', null)
+        )
+      );
+      //remove steps used by scheme
+      await memory.update((t) =>
+        steps
+          .filter((s) => related(s, 'organizationscheme') === scheme)
+          .map((s) => t.removeRecord(s))
+      );
+      //remove scheme
       await memory.update((t) =>
         t.removeRecord({ type: 'organizationscheme', id: scheme })
       );
@@ -327,8 +344,10 @@ function AssignSection(props: IProps) {
 
   const confirmClose = async () => {
     setSaving(true);
+    setBusy(true);
     const schemeId = await handleAdd();
     await doAssign(schemeId);
+    setBusy(false);
     justClose();
   };
 
@@ -364,16 +383,11 @@ function AssignSection(props: IProps) {
         for (let s of steps.filter(
           (s) => related(s, 'organizationscheme') === scheme
         )) {
+          const step = related(s, 'orgWorkflowStep');
           if (related(s, 'group')) {
-            assignMap.set(
-              related(s, 'orgWorkflowStep'),
-              'g:' + related(s, 'group')
-            );
+            assignMap.set(step, 'g:' + related(s, 'group'));
           } else if (related(s, 'user')) {
-            assignMap.set(
-              related(s, 'orgWorkflowStep'),
-              'u:' + related(s, 'user')
-            );
+            assignMap.set(step, 'u:' + related(s, 'user'));
           }
         }
         setAssignArr(Array.from(assignMap.entries()));
@@ -452,12 +466,14 @@ function AssignSection(props: IProps) {
                   '{0}',
                   getWfLabel(s?.attributes?.name ?? '')
                 )}
+                emptyValue={isPermission ? t.noRestriction : t.noAssignment}
                 initAssignment={assignArr.find((a) => a[0] === s.id)?.[1] ?? ''}
                 onChange={(value) => handleAssign(s.id, value)}
                 disabled={readOnly || saving}
               />
             ))}
         </DialogContent>
+        {busy && <LinearProgress variant="indeterminate" />}
         <DialogActions>
           {scheme && !readOnly && !saving && (
             <AltButton color="warning" onClick={handleDelete}>
@@ -475,7 +491,10 @@ function AssignSection(props: IProps) {
               id="assignClose"
               onClick={handleClose}
               disabled={
-                !schemeName.trim() || isNameDuplicate || !changed || saving
+                !schemeName.trim() ||
+                isNameDuplicate ||
+                !(props.inChange || changed) ||
+                saving
               }
             >
               {ts.save}
